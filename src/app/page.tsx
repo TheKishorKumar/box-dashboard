@@ -70,6 +70,61 @@ export default function Dashboard() {
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
+  const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [newGroupName, setNewGroupName] = useState("")
+  const [stockGroupSearch, setStockGroupSearch] = useState("")
+  const [isStockGroupOpen, setIsStockGroupOpen] = useState(false)
+  const [stockGroups, setStockGroups] = useState([
+    "Groceries",
+    "Vegetables", 
+    "Meat",
+    "Dairy",
+    "Beverages",
+    "Pantry",
+    "Oils",
+    "Fruits",
+    "Grains",
+    "Spices",
+    "Condiments",
+    "Frozen Foods",
+    "Snacks",
+    "Bakery",
+    "Seafood",
+    "Poultry",
+    "Cleaning Supplies",
+    "Paper Products",
+    "Alcoholic Beverages"
+  ])
+  const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
+  const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
+  const [measuringUnits, setMeasuringUnits] = useState([
+    "kg",
+    "g", 
+    "L",
+    "ml",
+    "pcs",
+    "boxes",
+    "bottles",
+    "cans",
+    "bags",
+    "units",
+    "packs",
+    "cartons",
+    "dozens",
+    "pairs",
+    "sets",
+    "rolls",
+    "sheets",
+    "pieces",
+    "slices",
+    "cups",
+    "tablespoons",
+    "teaspoons",
+    "ounces",
+    "pounds",
+    "quarts",
+    "gallons"
+  ])
 
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {
@@ -79,20 +134,96 @@ export default function Dashboard() {
     }
   }
 
+  // Custom setter that saves stock groups to localStorage
+  const updateStockGroups = (newGroups: string[]) => {
+    setStockGroups(newGroups)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockGroups', JSON.stringify(newGroups))
+    }
+  }
+
+  // Handle creating a new stock group
+  const handleCreateGroup = () => {
+    if (newGroupName.trim()) {
+      const newGroup = newGroupName.trim()
+      updateStockGroups([...stockGroups, newGroup])
+      handleInputChange("category", newGroup)
+      setNewGroupName("")
+      setShowCreateGroup(false)
+      addToast('success', `Stock group "${newGroup}" created successfully`)
+    }
+  }
+
+  // Filter stock groups based on search
+  const filteredStockGroups = stockGroups.filter(group =>
+    group.toLowerCase().includes(stockGroupSearch.toLowerCase())
+  )
+
+  // Filter measuring units based on search
+  const filteredMeasuringUnits = measuringUnits.filter(unit =>
+    unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
+  )
+
   // Load data from localStorage after hydration
   useEffect(() => {
     const saved = localStorage.getItem('stockItems')
     if (saved) {
       setStockItems(JSON.parse(saved))
     }
+    
+    // Load stock groups from localStorage
+    const savedGroups = localStorage.getItem('stockGroups')
+    if (savedGroups) {
+      setStockGroups(JSON.parse(savedGroups))
+    }
+    
     setIsHydrated(true)
   }, [])
+
+  // Handle clicking outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.stock-group-dropdown')) {
+        setIsStockGroupOpen(false)
+      }
+      if (!target.closest('.measuring-unit-dropdown')) {
+        setIsMeasuringUnitOpen(false)
+      }
+    }
+
+    if (isStockGroupOpen || isMeasuringUnitOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isStockGroupOpen, isMeasuringUnitOpen])
 
   // State for form
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<StockItem | null>(null)
   const [toasts, setToasts] = useState<Array<{id: number, type: string, message: string, action: {label: string, action: () => void} | null}>>([])
+  
+  // State for sidebar - initialize with localStorage value if available
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedSidebarState = localStorage.getItem('sidebarCollapsed')
+      if (savedSidebarState !== null) {
+        return JSON.parse(savedSidebarState)
+      }
+    }
+    return false
+  })
+
+  // Save sidebar state to localStorage when it changes
+  const handleSidebarToggle = () => {
+    const newState = !isSidebarCollapsed
+    setIsSidebarCollapsed(newState)
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState))
+  }
 
   // Function to handle adding stock item (opens the sheet)
   const handleAddStockItem = () => {
@@ -112,6 +243,8 @@ export default function Dashboard() {
       icon: item.icon,
       price: item.price ? item.price.toString() : ""
     })
+    setStockGroupSearch(item.category) // Set the search field to show current category
+    setMeasuringUnitSearch(item.measuringUnit) // Set the search field to show current measuring unit
     setIsEditSheetOpen(true)
   }
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false)
@@ -284,65 +417,74 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+            {/* Sidebar */}
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-          <Menu className="h-5 w-5 text-gray-600" />
-                     <img src="/box-logo.svg" alt="BOX by Bottle" className="h-6 w-auto" />
+          <button 
+            onClick={handleSidebarToggle}
+            className="h-6 w-6 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          {!isSidebarCollapsed && (
+            <img src="/box-logo.svg" alt="BOX by Bottle" className="h-6 w-auto" />
+          )}
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Home className="h-5 w-5" />
-            <span>Home</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Home className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Home</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <FileText className="h-5 w-5" />
-            <span>Menu manager</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <FileText className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Menu manager</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 bg-gray-100 text-gray-900 rounded-lg">
-            <Package className="h-5 w-5" />
-            <span>Inventory</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} bg-gray-100 text-gray-900 rounded-lg transition-all duration-300 ease-out`}>
+            <Package className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Inventory</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Square className="h-5 w-5" />
-            <span>Areas and Tables</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Square className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Areas and Tables</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Users className="h-5 w-5" />
-            <span>Members</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Users className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Members</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Clock className="h-5 w-5" />
-            <span>Order history</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Clock className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Order history</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <TrendingUp className="h-5 w-5" />
-            <span>Sales</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <TrendingUp className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Sales</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Activity className="h-5 w-5" />
-            <span>Activity</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Activity className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Activity</span>}
           </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-            <Settings className="h-5 w-5" />
-            <span>Profile and settings</span>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
+            <Settings className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Profile and settings</span>}
           </a>
         </nav>
 
         {/* User Profile */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <Avatar className="h-8 w-8">
               <AvatarImage src="/avatars/srijan.jpg" />
               <AvatarFallback>SS</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Srijan Shrestha</p>
-              <p className="text-xs text-gray-500">Manager</p>
-            </div>
+            {!isSidebarCollapsed && (
+              <div>
+                <p className="text-sm font-medium text-gray-900">Srijan Shrestha</p>
+                <p className="text-xs text-gray-500">Manager</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -613,43 +755,166 @@ export default function Dashboard() {
                             <Label htmlFor="stock-group" className="text-sm font-medium">
                               Stock group *
                             </Label>
-                            <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)} required>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select a stock group" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Groceries">Groceries</SelectItem>
-                                <SelectItem value="Vegetables">Vegetables</SelectItem>
-                                <SelectItem value="Meat">Meat</SelectItem>
-                                <SelectItem value="Dairy">Dairy</SelectItem>
-                                <SelectItem value="Beverages">Beverages</SelectItem>
-                                <SelectItem value="Pantry">Pantry</SelectItem>
-                                <SelectItem value="Oils">Oils</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="relative stock-group-dropdown">
+                              <Input
+                                placeholder="Search or select a stock group"
+                                value={stockGroupSearch}
+                                onChange={(e) => {
+                                  setStockGroupSearch(e.target.value)
+                                  if (!isStockGroupOpen) setIsStockGroupOpen(true)
+                                }}
+                                onFocus={() => setIsStockGroupOpen(true)}
+                                className="w-full"
+                                required
+                              />
+                              
+                              {isStockGroupOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                  {/* Groups List - Fixed height for 5 items */}
+                                  <div className="max-h-[200px] overflow-y-auto">
+                                    {filteredStockGroups.map((group) => (
+                                      <button
+                                        key={group}
+                                        type="button"
+                                        onClick={() => {
+                                          handleInputChange("category", group)
+                                          setStockGroupSearch(group)
+                                          setIsStockGroupOpen(false)
+                                        }}
+                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                      >
+                                        {group}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  
+                                  {/* Separator */}
+                                  <div className="border-t border-gray-200"></div>
+                                  
+                                  {/* Create New Group Button */}
+                                  <div className="p-3">
+                                    {showCreateGroup ? (
+                                      <div className="space-y-2">
+                                        <Input
+                                          placeholder="Enter group name"
+                                          value={newGroupName}
+                                          onChange={(e) => setNewGroupName(e.target.value)}
+                                          className="h-8 text-sm"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault()
+                                              handleCreateGroup()
+                                            }
+                                          }}
+                                        />
+                                        <div className="flex gap-2">
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={handleCreateGroup}
+                                            className="flex-1 h-8 text-sm"
+                                            style={{ backgroundColor: '#D8550D' }}
+                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                                          >
+                                            Create
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setShowCreateGroup(false)
+                                              setNewGroupName("")
+                                            }}
+                                            className="flex-1 h-8 text-sm"
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowCreateGroup(true)}
+                                        className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
+                                      >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Create a new stock group
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
                           <div className="space-y-2">
                             <Label htmlFor="measuring-unit" className="text-sm font-medium">
                               Measuring unit *
                             </Label>
-                            <Select value={formData.measuringUnit} onValueChange={(value) => handleInputChange("measuringUnit", value)} required>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select measuring unit" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="kg">Kilograms (kg)</SelectItem>
-                                <SelectItem value="g">Grams (g)</SelectItem>
-                                <SelectItem value="L">Liters (L)</SelectItem>
-                                <SelectItem value="ml">Milliliters (ml)</SelectItem>
-                                <SelectItem value="pcs">Pieces (pcs)</SelectItem>
-                                <SelectItem value="boxes">Boxes</SelectItem>
-                                <SelectItem value="bottles">Bottles</SelectItem>
-                                <SelectItem value="cans">Cans</SelectItem>
-                                <SelectItem value="bags">Bags</SelectItem>
-                                <SelectItem value="units">Units</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="relative measuring-unit-dropdown">
+                              <Input
+                                placeholder="Search or select measuring unit"
+                                value={measuringUnitSearch}
+                                onChange={(e) => {
+                                  setMeasuringUnitSearch(e.target.value)
+                                  if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
+                                }}
+                                onFocus={() => setIsMeasuringUnitOpen(true)}
+                                className="w-full"
+                                required
+                              />
+                              
+                              {isMeasuringUnitOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                  {/* Units List - Fixed height for 5 items */}
+                                  <div className="max-h-[200px] overflow-y-auto">
+                                    {filteredMeasuringUnits.map((unit) => (
+                                      <button
+                                        key={unit}
+                                        type="button"
+                                        onClick={() => {
+                                          handleInputChange("measuringUnit", unit)
+                                          setMeasuringUnitSearch(unit)
+                                          setIsMeasuringUnitOpen(false)
+                                        }}
+                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                      >
+                                        {unit === "kg" && "Kilograms (kg)"}
+                                        {unit === "g" && "Grams (g)"}
+                                        {unit === "L" && "Liters (L)"}
+                                        {unit === "ml" && "Milliliters (ml)"}
+                                        {unit === "pcs" && "Pieces (pcs)"}
+                                        {unit === "boxes" && "Boxes"}
+                                        {unit === "bottles" && "Bottles"}
+                                        {unit === "cans" && "Cans"}
+                                        {unit === "bags" && "Bags"}
+                                        {unit === "units" && "Units"}
+                                        {unit === "packs" && "Packs"}
+                                        {unit === "cartons" && "Cartons"}
+                                        {unit === "dozens" && "Dozens"}
+                                        {unit === "pairs" && "Pairs"}
+                                        {unit === "sets" && "Sets"}
+                                        {unit === "rolls" && "Rolls"}
+                                        {unit === "sheets" && "Sheets"}
+                                        {unit === "pieces" && "Pieces"}
+                                        {unit === "slices" && "Slices"}
+                                        {unit === "cups" && "Cups"}
+                                        {unit === "tablespoons" && "Tablespoons (tbsp)"}
+                                        {unit === "teaspoons" && "Teaspoons (tsp)"}
+                                        {unit === "ounces" && "Ounces (oz)"}
+                                        {unit === "pounds" && "Pounds (lbs)"}
+                                        {unit === "quarts" && "Quarts (qt)"}
+                                        {unit === "gallons" && "Gallons (gal)"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
                           <div className="space-y-2">
@@ -949,43 +1214,166 @@ export default function Dashboard() {
                           <Label htmlFor="edit-stock-group" className="text-sm font-medium">
                             Stock group *
                           </Label>
-                          <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)} required>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a stock group" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Groceries">Groceries</SelectItem>
-                              <SelectItem value="Vegetables">Vegetables</SelectItem>
-                              <SelectItem value="Meat">Meat</SelectItem>
-                              <SelectItem value="Dairy">Dairy</SelectItem>
-                              <SelectItem value="Beverages">Beverages</SelectItem>
-                              <SelectItem value="Pantry">Pantry</SelectItem>
-                              <SelectItem value="Oils">Oils</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="relative stock-group-dropdown">
+                            <Input
+                              placeholder="Search or select a stock group"
+                              value={stockGroupSearch}
+                              onChange={(e) => {
+                                setStockGroupSearch(e.target.value)
+                                if (!isStockGroupOpen) setIsStockGroupOpen(true)
+                              }}
+                              onFocus={() => setIsStockGroupOpen(true)}
+                              className="w-full"
+                              required
+                            />
+                            
+                            {isStockGroupOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                {/* Groups List - Fixed height for 5 items */}
+                                <div className="max-h-[200px] overflow-y-auto">
+                                  {filteredStockGroups.map((group) => (
+                                    <button
+                                      key={group}
+                                      type="button"
+                                      onClick={() => {
+                                        handleInputChange("category", group)
+                                        setStockGroupSearch(group)
+                                        setIsStockGroupOpen(false)
+                                      }}
+                                      className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                    >
+                                      {group}
+                                    </button>
+                                  ))}
+                                </div>
+                                
+                                {/* Separator */}
+                                <div className="border-t border-gray-200"></div>
+                                
+                                                                  {/* Create New Group Button */}
+                                  <div className="p-3">
+                                  {showCreateGroup ? (
+                                    <div className="space-y-2">
+                                      <Input
+                                        placeholder="Enter group name"
+                                        value={newGroupName}
+                                        onChange={(e) => setNewGroupName(e.target.value)}
+                                        className="h-8 text-sm"
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            handleCreateGroup()
+                                          }
+                                        }}
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={handleCreateGroup}
+                                          className="flex-1 h-8 text-sm"
+                                          style={{ backgroundColor: '#D8550D' }}
+                                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                                        >
+                                          Create
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setShowCreateGroup(false)
+                                            setNewGroupName("")
+                                          }}
+                                          className="flex-1 h-8 text-sm"
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowCreateGroup(true)}
+                                      className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <Plus className="h-4 w-4 mr-2" />
+                                      Create a new stock group
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="edit-measuring-unit" className="text-sm font-medium">
                             Measuring unit *
                           </Label>
-                          <Select value={formData.measuringUnit} onValueChange={(value) => handleInputChange("measuringUnit", value)} required>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select measuring unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="kg">Kilograms (kg)</SelectItem>
-                              <SelectItem value="g">Grams (g)</SelectItem>
-                              <SelectItem value="L">Liters (L)</SelectItem>
-                              <SelectItem value="ml">Milliliters (ml)</SelectItem>
-                              <SelectItem value="pcs">Pieces (pcs)</SelectItem>
-                              <SelectItem value="boxes">Boxes</SelectItem>
-                              <SelectItem value="bottles">Bottles</SelectItem>
-                              <SelectItem value="cans">Cans</SelectItem>
-                              <SelectItem value="bags">Bags</SelectItem>
-                              <SelectItem value="units">Units</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="relative measuring-unit-dropdown">
+                            <Input
+                              placeholder="Search or select measuring unit"
+                              value={measuringUnitSearch}
+                              onChange={(e) => {
+                                setMeasuringUnitSearch(e.target.value)
+                                if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
+                              }}
+                              onFocus={() => setIsMeasuringUnitOpen(true)}
+                              className="w-full"
+                              required
+                            />
+                            
+                            {isMeasuringUnitOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                {/* Units List - Fixed height for 5 items */}
+                                <div className="max-h-[200px] overflow-y-auto">
+                                  {filteredMeasuringUnits.map((unit) => (
+                                    <button
+                                      key={unit}
+                                      type="button"
+                                      onClick={() => {
+                                        handleInputChange("measuringUnit", unit)
+                                        setMeasuringUnitSearch(unit)
+                                        setIsMeasuringUnitOpen(false)
+                                      }}
+                                      className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                    >
+                                      {unit === "kg" && "Kilograms (kg)"}
+                                      {unit === "g" && "Grams (g)"}
+                                      {unit === "L" && "Liters (L)"}
+                                      {unit === "ml" && "Milliliters (ml)"}
+                                      {unit === "pcs" && "Pieces (pcs)"}
+                                      {unit === "boxes" && "Boxes"}
+                                      {unit === "bottles" && "Bottles"}
+                                      {unit === "cans" && "Cans"}
+                                      {unit === "bags" && "Bags"}
+                                      {unit === "units" && "Units"}
+                                      {unit === "packs" && "Packs"}
+                                      {unit === "cartons" && "Cartons"}
+                                      {unit === "dozens" && "Dozens"}
+                                      {unit === "pairs" && "Pairs"}
+                                      {unit === "sets" && "Sets"}
+                                      {unit === "rolls" && "Rolls"}
+                                      {unit === "sheets" && "Sheets"}
+                                      {unit === "pieces" && "Pieces"}
+                                      {unit === "slices" && "Slices"}
+                                      {unit === "cups" && "Cups"}
+                                      {unit === "tablespoons" && "Tablespoons (tbsp)"}
+                                      {unit === "teaspoons" && "Teaspoons (tsp)"}
+                                      {unit === "ounces" && "Ounces (oz)"}
+                                      {unit === "pounds" && "Pounds (lbs)"}
+                                      {unit === "quarts" && "Quarts (qt)"}
+                                      {unit === "gallons" && "Gallons (gal)"}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="space-y-2">
