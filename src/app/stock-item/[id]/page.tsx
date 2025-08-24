@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AddStockForm } from "@/components/add-stock-form"
 import { StockOutForm } from "@/components/stock-out-form"
+import { EditRecordForm } from "@/components/edit-record-form"
 import { StockManagementMenu } from "@/components/stock-management-menu"
 import { 
   ArrowLeft,
@@ -77,6 +78,10 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   const [isHydrated, setIsHydrated] = useState(false)
   const [showAddStockForm, setShowAddStockForm] = useState(false)
   const [showStockOutForm, setShowStockOutForm] = useState(false)
+  const [showEditRecordForm, setShowEditRecordForm] = useState(false)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<StockTransaction | null>(null)
+  const [deletingTransaction, setDeletingTransaction] = useState<StockTransaction | null>(null)
   
   // State for sidebar - initialize with localStorage value if available
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -191,6 +196,62 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     
     setTransactions(prev => [newTransaction, ...prev])
     setShowStockOutForm(false)
+  }
+
+  // Handle edit record
+  const handleEditRecord = (transaction: StockTransaction) => {
+    setEditingTransaction(transaction)
+    setShowEditRecordForm(true)
+  }
+
+  // Handle delete record confirmation
+  const handleDeleteRecord = (transaction: StockTransaction) => {
+    setDeletingTransaction(transaction)
+    setShowDeleteConfirmation(true)
+  }
+
+  // Confirm delete record
+  const confirmDeleteRecord = () => {
+    if (deletingTransaction) {
+      setTransactions(prev => prev.filter(t => t.id !== deletingTransaction.id))
+      setDeletingTransaction(null)
+      setShowDeleteConfirmation(false)
+    }
+  }
+
+  // Handle edit record form submission
+  const handleEditRecordSubmit = (data: any) => {
+    if (editingTransaction) {
+      // Parse the date and time from the datetime string
+      const dateTime = new Date(data.dateTime)
+      const date = dateTime.toLocaleDateString('en-US', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      })
+      const time = dateTime.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+      
+      // Update the transaction
+      setTransactions(prev => prev.map(t => 
+        t.id === editingTransaction.id 
+          ? { 
+              ...t, 
+              quantity: data.quantity,
+              party: data.party,
+              stockValue: data.quantity * data.perUnitPrice,
+              notes: data.notes,
+              date: date,
+              time: time
+            }
+          : t
+      ))
+      setEditingTransaction(null)
+      setShowEditRecordForm(false)
+    }
   }
 
   // Load data from localStorage after hydration
@@ -422,15 +483,11 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
                          </Button>
                        </DropdownMenuTrigger>
                        <DropdownMenuContent align="end">
-                         <DropdownMenuItem>
-                           View Details
+                         <DropdownMenuItem onClick={() => handleEditRecord(transaction)}>
+                           Edit Record
                          </DropdownMenuItem>
-                         <DropdownMenuItem>
-                           Edit Transaction
-                         </DropdownMenuItem>
-                         <DropdownMenuSeparator />
-                         <DropdownMenuItem className="text-red-600">
-                           Delete Transaction
+                         <DropdownMenuItem onClick={() => handleDeleteRecord(transaction)}>
+                           Delete Record
                          </DropdownMenuItem>
                        </DropdownMenuContent>
                      </DropdownMenu>
@@ -463,6 +520,29 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
           onClose={() => setShowStockOutForm(false)}
           onSubmit={handleStockOutSubmit}
         />
+      )}
+
+              {/* Edit Record Form Modal */}
+        {showEditRecordForm && editingTransaction && (
+          <EditRecordForm
+            transaction={editingTransaction}
+            onClose={() => setShowEditRecordForm(false)}
+            onSubmit={handleEditRecordSubmit}
+          />
+        )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && deletingTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-4">Are you sure you want to delete this transaction?</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteRecord}>Delete</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
