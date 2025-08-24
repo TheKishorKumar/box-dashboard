@@ -110,7 +110,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Stock item not found</h2>
-            <p className="text-gray-600 mb-4">The stock item you're looking for doesn't exist.</p>
+            <p className="text-gray-600 mb-4">The stock item you&apos;re looking for doesn&apos;t exist.</p>
             <Link href="/">
               <Button>Back to Inventory</Button>
             </Link>

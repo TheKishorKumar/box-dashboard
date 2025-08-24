@@ -1,19 +1,32 @@
 "use client"
 
+interface StockItem {
+  id: number
+  name: string
+  category: string
+  measuringUnit: string
+  quantity: number
+  status: string
+  lastUpdated: string
+  image: string
+  description: string
+  reorderLevel: number
+  icon: string
+  price: number
+}
+
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { 
   Home, 
   Package, 
@@ -31,10 +44,8 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
-  Eye,
   AlertTriangle,
-  CheckCircle,
-  Clock as ClockIcon
+  CheckCircle
 } from "lucide-react"
 import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
 import Link from "next/link"
@@ -57,11 +68,11 @@ export default function Dashboard() {
     }
   }, [])
   // State for stock items
-  const [stockItems, setStockItems] = useState([])
+  const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
   // Custom setter that saves to localStorage
-  const updateStockItems = (newItems: any) => {
+  const updateStockItems = (newItems: StockItem[]) => {
     setStockItems(newItems)
     if (typeof window !== 'undefined') {
       localStorage.setItem('stockItems', JSON.stringify(newItems))
@@ -80,8 +91,8 @@ export default function Dashboard() {
   // State for form
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState(null)
-  const [toasts, setToasts] = useState([])
+  const [editingItem, setEditingItem] = useState<StockItem | null>(null)
+  const [toasts, setToasts] = useState<Array<{id: number, type: string, message: string, action?: {label: string, action: () => void} | null}>>([])
 
   // Function to handle adding stock item (opens the sheet)
   const handleAddStockItem = () => {
@@ -89,7 +100,7 @@ export default function Dashboard() {
   }
 
   // Function to handle editing stock item
-  const handleEditStockItem = (item: any) => {
+  const handleEditStockItem = (item: StockItem) => {
     setEditingItem(item)
     setFormData({
       name: item.name,
@@ -218,7 +229,7 @@ export default function Dashboard() {
   }
 
   // Toast functions
-  const addToast = (type, message, action = null) => {
+  const addToast = (type: string, message: string, action: {label: string, action: () => void} | null = null) => {
     const id = Date.now()
     const newToast = { id, type, message, action }
     setToasts(prev => [...prev, newToast])
@@ -229,11 +240,11 @@ export default function Dashboard() {
     }, 5000)
   }
 
-  const removeToast = (id) => {
+  const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
-  const handleUndoDelete = (deletedItem) => {
+  const handleUndoDelete = (deletedItem: StockItem) => {
     updateStockItems([...stockItems, deletedItem])
     addToast('success', 'Item restored successfully')
   }
