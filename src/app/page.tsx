@@ -92,7 +92,7 @@ export default function Dashboard() {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<StockItem | null>(null)
-  const [toasts, setToasts] = useState<Array<{id: number, type: string, message: string, action?: {label: string, action: () => void} | null}>>([])
+  const [toasts, setToasts] = useState<Array<{id: number, type: string, message: string, action: {label: string, action: () => void} | null}>>([])
 
   // Function to handle adding stock item (opens the sheet)
   const handleAddStockItem = () => {
@@ -255,7 +255,7 @@ export default function Dashboard() {
     updateStockItems(stockItems.filter(item => item.id !== id))
     addToast('success', 'Stock item deleted successfully', {
       label: 'Undo',
-      action: () => handleUndoDelete(deletedItem)
+      action: () => deletedItem && handleUndoDelete(deletedItem)
     })
   }
 
@@ -1293,12 +1293,12 @@ export default function Dashboard() {
                   </button>
                   <button
                     onClick={() => {
-                      toast.action.action()
+                      toast.action?.action()
                       removeToast(toast.id)
                     }}
                     className="text-sm text-orange-600 hover:text-orange-700 font-medium"
                   >
-                    {toast.action.label}
+                    {toast.action?.label}
                   </button>
                 </div>
               )}
