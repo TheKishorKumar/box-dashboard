@@ -97,7 +97,7 @@ export default function Dashboard() {
   ])
   const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
   const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
-  const [measuringUnits, setMeasuringUnits] = useState([
+  const measuringUnits = [
     "kg",
     "g", 
     "L",
@@ -124,7 +124,7 @@ export default function Dashboard() {
     "pounds",
     "quarts",
     "gallons"
-  ])
+  ]
 
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {

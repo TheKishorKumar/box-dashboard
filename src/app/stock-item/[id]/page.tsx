@@ -12,7 +12,6 @@ import { StockOutForm } from "@/components/stock-out-form"
 import { StockManagementMenu } from "@/components/stock-management-menu"
 import { 
   ArrowLeft,
-  Plus,
   MoreHorizontal,
   Home, 
   Package, 
@@ -53,6 +52,24 @@ interface StockTransaction {
   notes: string
 }
 
+interface AddStockData {
+  quantity: number
+  perUnitPrice: number
+  supplierName: string
+  dateTime: string
+  notes: string
+}
+
+interface StockOutData {
+  perUnitPrice: number
+  quantity: number
+  reasonForDeduction: string
+  supplier?: string
+  supplierName?: string
+  dateTime: string
+  notes: string
+}
+
 export default function StockItemHistory({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [stockItem, setStockItem] = useState<StockItem | null>(null)
@@ -80,7 +97,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   }
 
   // Handle add stock form submission
-  const handleAddStock = (data: any) => {
+  const handleAddStock = (data: AddStockData) => {
     // Here you would typically save the stock data
     console.log('Adding stock:', data)
     
@@ -119,7 +136,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   }
 
   // Handle stock out form submission
-  const handleStockOutSubmit = (data: any) => {
+  const handleStockOutSubmit = (data: StockOutData) => {
     // Here you would typically save the stock out data
     console.log('Stocking out:', data)
     
