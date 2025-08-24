@@ -1,0 +1,184 @@
+# Dashboard Project Rules & Guidelines
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui (built on Radix UI primitives)
+- **Icons**: Lucide React
+- **State Management**: React useState/useEffect (client-side only)
+- **Build Tool**: Turbopack
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx (main dashboard)
+│   ├── layout.tsx
+│   └── globals.css
+├── components/
+│   ├── ui/ (reusable UI components)
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── table.tsx
+│   │   ├── empty-state.tsx
+│   │   └── ... (other UI components)
+│   └── stock-items-empty-state.tsx (specific implementations)
+└── lib/
+    └── utils.ts (utility functions)
+```
+
+## Component Architecture
+
+### UI Components (`src/components/ui/`)
+
+- Built with shadcn/ui (based on Radix UI primitives)
+- Use `class-variance-authority` for variants
+- Follow consistent naming: `ComponentName.tsx`
+- Export as named exports
+- Include proper TypeScript interfaces
+- Use `cn()` utility for class merging
+- Components are copy-pasteable and customizable
+
+### Design System
+
+- **Colors**:
+  - Primary: `#D8550D` (orange)
+  - Hover: `#A8420A` (darker orange)
+  - Text: `text-gray-900` (dark), `text-gray-600` (medium)
+  - Background: `bg-gray-50` (light gray)
+- **Typography**:
+  - Headers: `text-2xl font-semibold`
+  - Body: `text-sm`
+- **Spacing**: Use Tailwind spacing scale (4px = 1 unit)
+- **Border Radius**: `rounded-xl` for cards
+
+### Empty State Component
+
+- **Location**: `src/components/ui/empty-state.tsx`
+- **Usage**: Reusable across all pages
+- **Props**:
+  - `image?: string` - Optional illustration
+  - `title: string` - Main heading
+  - `description?: string` - Subtitle text
+  - `actionLabel?: string` - Button text
+  - `onAction?: () => void` - Button handler
+  - `actionIcon?: React.ReactNode` - Button icon
+  - `variant?: "default" | "centered"`
+- **Styling**:
+  - Image: 120px × 120px (`h-30 w-30`)
+  - Image to header: 12px spacing (`mb-3`)
+  - Header: 24px semibold (`text-2xl font-semibold`)
+  - Header to button: 24px spacing (`mt-6`)
+  - Full width container, no border
+  - Button hugs content (not full width)
+
+### Client Components
+
+- All interactive components must have `"use client"` directive
+- Event handlers require client-side rendering
+- Use proper error handling for async operations
+
+## Coding Standards
+
+### React Patterns
+
+- Use functional components with hooks
+- Implement proper TypeScript interfaces
+- Use `React.forwardRef` for components that need refs
+- Follow naming conventions: PascalCase for components
+
+### Styling Guidelines
+
+- Use Tailwind CSS classes
+- Prefer utility classes over custom CSS
+- Use `cn()` for conditional classes
+- Maintain consistent spacing and typography
+
+### State Management
+
+- Use `useState` for local component state
+- Use `useEffect` for side effects
+- Keep state as close to where it's used as possible
+
+### Error Handling
+
+- Implement proper error boundaries
+- Use try-catch for async operations
+- Provide user-friendly error messages
+
+## File Naming Conventions
+
+- Components: `PascalCase.tsx`
+- Pages: `page.tsx` (Next.js App Router)
+- Layouts: `layout.tsx`
+- Utilities: `camelCase.ts`
+
+## Import Patterns
+
+```typescript
+// UI Components
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+
+// Icons
+import { Plus, Search, User } from "lucide-react";
+
+// Utilities
+import { cn } from "@/lib/utils";
+```
+
+## Common Patterns
+
+### Button Styling
+
+```typescript
+<Button
+  className="text-white"
+  style={{ backgroundColor: "#D8550D" }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#A8420A")}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#D8550D")}
+>
+  Button Text
+</Button>
+```
+
+### Empty State Usage
+
+```typescript
+<EmptyState
+  image="/path-to-image.png"
+  title="No items found"
+  description="Start by adding your first item"
+  actionLabel="Add item"
+  onAction={handleAddItem}
+  actionIcon={<Plus className="h-4 w-4" />}
+/>
+```
+
+## Performance Considerations
+
+- Use Next.js Image component for optimized images
+- Implement proper loading states
+- Minimize bundle size with tree shaking
+- Use React.memo for expensive components
+
+## Accessibility
+
+- Include proper ARIA labels
+- Use semantic HTML elements
+- Ensure keyboard navigation
+- Maintain color contrast ratios
+- Provide alt text for images
+
+## Future Considerations
+
+- Consider implementing a state management library if complexity grows
+- Add unit tests for critical components
+- Implement proper error boundaries
+- Consider adding animations for better UX
+  alwaysApply: false
+
+---
