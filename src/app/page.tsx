@@ -53,29 +53,11 @@ import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
 import Link from "next/link"
 
 export default function Dashboard() {
-  // Add custom CSS for brand colors
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.textContent = `
-      .brand-orange { background-color: #D8550D; }
-      .brand-orange:hover { background-color: #A8420A; }
-    `
-    document.head.appendChild(style)
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }
-  }, [])
-
-  // Generate unique ID function
-  const generateUniqueId = () => {
-    return Date.now() + Math.floor(Math.random() * 1000)
-  }
-
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [newGroupName, setNewGroupName] = useState("")
   const [stockGroupSearch, setStockGroupSearch] = useState("")
@@ -132,6 +114,33 @@ export default function Dashboard() {
     "gallons"
   ]
 
+  // Set mounted state to prevent hydration issues
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Add custom CSS for brand colors
+  useEffect(() => {
+    if (!mounted) return
+    
+    const style = document.createElement('style')
+    style.textContent = `
+      .brand-orange { background-color: #D8550D; }
+      .brand-orange:hover { background-color: #A8420A; }
+    `
+    document.head.appendChild(style)
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style)
+      }
+    }
+  }, [mounted])
+
+  // Generate unique ID function
+  const generateUniqueId = () => {
+    return Date.now() + Math.floor(Math.random() * 1000)
+  }
+
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {
     setStockItems(newItems)
@@ -170,20 +179,63 @@ export default function Dashboard() {
     unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
   )
 
-  // Load data from localStorage after hydration
+    // Load data from localStorage after hydration
   useEffect(() => {
-    const saved = localStorage.getItem('stockItems')
-    if (saved) {
-      setStockItems(JSON.parse(saved))
+    const loadData = () => {
+      try {
+        const saved = localStorage.getItem('stockItems')
+        if (saved) {
+          setStockItems(JSON.parse(saved))
+        }
+        
+        // Load stock groups from localStorage
+        const savedGroups = localStorage.getItem('stockGroups')
+        if (savedGroups) {
+          setStockGroups(JSON.parse(savedGroups))
+        }
+      } catch (error) {
+        console.error('Error loading data from localStorage:', error)
+        setStockItems([])
+        setStockGroups([
+          "Groceries",
+          "Vegetables", 
+          "Meat",
+          "Dairy",
+          "Beverages",
+          "Pantry",
+          "Oils",
+          "Fruits",
+          "Grains",
+          "Spices",
+          "Condiments",
+          "Frozen Foods",
+          "Snacks",
+          "Bakery",
+          "Seafood",
+          "Poultry",
+          "Cleaning Supplies",
+          "Paper Products",
+          "Alcoholic Beverages"
+        ])
+      } finally {
+        setIsHydrated(true)
+        setIsLoading(false)
+      }
     }
+
+    // Add a small delay to ensure proper hydration
+    const timer = setTimeout(loadData, 100)
     
-    // Load stock groups from localStorage
-    const savedGroups = localStorage.getItem('stockGroups')
-    if (savedGroups) {
-      setStockGroups(JSON.parse(savedGroups))
+    // Fallback timeout to prevent infinite loading
+    const fallbackTimer = setTimeout(() => {
+      setIsHydrated(true)
+      setIsLoading(false)
+    }, 3000)
+    
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(fallbackTimer)
     }
-    
-    setIsHydrated(true)
   }, [])
 
   // Handle clicking outside to close dropdowns
@@ -1562,7 +1614,7 @@ export default function Dashboard() {
 
               {/* Stock Items Table */}
               <div>
-                {!isHydrated ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-gray-500">Loading...</div>
                   </div>
