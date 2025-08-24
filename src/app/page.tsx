@@ -274,7 +274,7 @@ export default function Dashboard() {
   }
 
   // Function to handle add stock form submission
-  const handleAddStock = (data: any) => {
+  const handleAddStock = (data: { quantity: number }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -290,7 +290,7 @@ export default function Dashboard() {
   }
 
   // Function to handle stock out form submission
-  const handleStockOutSubmit = (data: any) => {
+  const handleStockOutSubmit = (data: { quantity: number }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -434,10 +434,10 @@ export default function Dashboard() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
-  const handleUndoDelete = (deletedItem: StockItem) => {
-    updateStockItems([...stockItems, deletedItem])
-    addToast('success', 'Item restored successfully')
-  }
+  // const handleUndoDelete = (deletedItem: StockItem) => {
+  //   updateStockItems([...stockItems, deletedItem])
+  //   addToast('success', 'Item restored successfully')
+  // }
 
   // Handle delete item
   const handleDelete = (id: number) => {
@@ -1760,7 +1760,7 @@ export default function Dashboard() {
             </div>
             
             <p className="text-gray-600 mb-6 leading-relaxed">
-              This will permanently remove "{deletingItem.name}" from your inventory. This action cannot be undone.
+              This will permanently remove &quot;{deletingItem.name}&quot; from your inventory. This action cannot be undone.
             </p>
             
             <div className="flex justify-end gap-3">

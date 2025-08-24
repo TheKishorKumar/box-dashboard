@@ -22,7 +22,7 @@ interface AddStockData {
   notes: string
 }
 
-export function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: AddStockFormProps) {
+function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: AddStockFormProps) {
   const [formData, setFormData] = useState<AddStockData>({
     quantity: 0,
     perUnitPrice: 0,

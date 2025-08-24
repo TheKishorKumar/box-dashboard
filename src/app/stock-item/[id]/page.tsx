@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AddStockForm } from "@/components/add-stock-form"
 import { StockOutForm } from "@/components/stock-out-form"
 import { EditRecordForm } from "@/components/edit-record-form"
@@ -220,7 +220,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   }
 
   // Handle edit record form submission
-  const handleEditRecordSubmit = (data: any) => {
+  const handleEditRecordSubmit = (data: { quantity: number; party: string; perUnitPrice: number; notes: string; dateTime: string }) => {
     if (editingTransaction) {
       // Parse the date and time from the datetime string
       const dateTime = new Date(data.dateTime)
