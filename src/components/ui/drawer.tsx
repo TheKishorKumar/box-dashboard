@@ -16,16 +16,29 @@ interface DrawerProps {
 export function Drawer({ open, onOpenChange, title, description, children, footer }: DrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
-          {description && <SheetDescription>{description}</SheetDescription>}
-        </SheetHeader>
-        <div className="mt-6">
-          {children}
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+        <div className="px-6 flex-1">
+          <SheetHeader className="pl-0">
+            <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+              {title}
+            </SheetTitle>
+            {description && (
+              <SheetDescription>
+                {description}
+              </SheetDescription>
+            )}
+          </SheetHeader>
+          
+          {/* Separator line */}
+          <div className="border-b border-gray-200 mb-6"></div>
+          
+          <div className="space-y-6 mt-6">
+            {children}
+          </div>
         </div>
+
         {footer && (
-          <div className="mt-6 pt-6 border-t">
+          <div className="flex gap-3 px-6 py-4 border-t mt-auto">
             {footer}
           </div>
         )}
@@ -42,13 +55,25 @@ interface DrawerFooterProps {
 
 export function DrawerFooter({ onCancel, onSubmit, submitText }: DrawerFooterProps) {
   return (
-    <div className="flex gap-3">
-      <Button variant="outline" onClick={onCancel} className="flex-1">
+    <>
+      <Button 
+        type="button" 
+        variant="outline" 
+        onClick={onCancel}
+        className="flex-1"
+      >
         Cancel
       </Button>
-      <Button onClick={onSubmit} className="flex-1">
+      <Button 
+        type="button"
+        onClick={onSubmit}
+        className="text-white flex-1" 
+        style={{ backgroundColor: '#D8550D' }} 
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+      >
         {submitText}
       </Button>
-    </div>
+    </>
   )
 }
