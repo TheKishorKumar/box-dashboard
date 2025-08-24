@@ -5,14 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Drawer, DrawerFooter } from "@/components/ui/drawer"
-import { SupplierSelect } from "@/components/ui/supplier-select"
 
 interface EditRecordFormProps {
   transaction: {
     id: number
     date: string
     time: string
-    type: "Stock in" | "Stock out" | "Initial stock"
+    type: "Purchase" | "Usage" | "Opening Stock"
     quantity: number
     measuringUnit: string
     party: string
@@ -108,12 +107,13 @@ export function EditRecordForm({ transaction, onClose, onSubmit }: EditRecordFor
         {/* Party/Supplier */}
         <div className="space-y-2">
           <Label htmlFor="party" className="text-sm font-medium">
-            {transaction.type === "Stock in" ? "Supplier name" : "Party"} *
+            {transaction.type === "Purchase" ? "Supplier name" : "Party"} *
           </Label>
-          <SupplierSelect
+          <Input
+            id="party"
+            placeholder={`Search or select ${transaction.type === "Purchase" ? "supplier" : "party"}`}
             value={formData.party}
-            onChange={(value) => handleInputChange("party", value)}
-            placeholder={`Search or select ${transaction.type === "Stock in" ? "supplier" : "party"}`}
+            onChange={(e) => handleInputChange("party", e.target.value)}
             required
           />
         </div>

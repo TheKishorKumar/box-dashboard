@@ -20,7 +20,7 @@ interface StockTransaction {
   stockItemId: number
   date: string
   time: string
-  type: "Stock in" | "Stock out" | "Initial stock"
+  type: "Purchase" | "Usage" | "Opening Stock"
   quantity: number
   measuringUnit: string
   party: string
@@ -201,9 +201,9 @@ export default function Dashboard() {
           let totalQuantity = 0
           
           itemTransactions.forEach((transaction: StockTransaction) => {
-            if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+            if (transaction.type === "Purchase" || transaction.type === "Opening Stock") {
               totalQuantity += transaction.quantity
-            } else if (transaction.type === "Stock out") {
+            } else if (transaction.type === "Usage") {
               totalQuantity -= transaction.quantity
             }
           })
@@ -211,8 +211,8 @@ export default function Dashboard() {
           const newQuantity = Math.max(0, totalQuantity)
           const status = (() => {
             if (newQuantity === 0) return "Out of Stock"
-            if (newQuantity <= item.reorderLevel) return "Low Stock"
-            return "In Stock"
+            if (newQuantity <= item.reorderLevel) return "Low Quantity"
+            return "Available"
           })()
           return { ...item, quantity: newQuantity, status }
         })
@@ -322,20 +322,20 @@ export default function Dashboard() {
     setIsEditSheetOpen(true)
   }
 
-  // Function to handle stock in action
-  const handleStockIn = (item: StockItem) => {
+  // Function to handle record purchase action
+  const handleRecordPurchaseAction = (item: StockItem) => {
     setSelectedItem(item)
     setShowAddStockForm(true)
   }
 
-  // Function to handle stock out action
-  const handleStockOutAction = (item: StockItem) => {
+  // Function to handle record usage action
+  const handleRecordUsageAction = (item: StockItem) => {
     setSelectedItem(item)
     setShowStockOutForm(true)
   }
 
-  // Function to handle add stock form submission
-  const handleAddStock = (data: { quantity: number; perUnitPrice: number; supplierName: string; dateTime: string; notes: string }) => {
+  // Function to handle record purchase form submission
+  const handleRecordPurchaseSubmit = (data: { quantity: number; perUnitPrice: number; supplierName: string; dateTime: string; notes: string }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -359,7 +359,7 @@ export default function Dashboard() {
           minute: '2-digit',
           hour12: true 
         }),
-        type: "Stock in" as const,
+        type: "Purchase" as const,
         quantity: data.quantity,
         measuringUnit: selectedItem.measuringUnit,
         party: data.supplierName,
@@ -372,14 +372,14 @@ export default function Dashboard() {
       const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
       localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
       
-      addToast('success', `Added ${data.quantity} ${selectedItem.measuringUnit} to ${selectedItem.name}`)
+      addToast('success', `Recorded purchase of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
       setShowAddStockForm(false)
       setSelectedItem(null)
     }
   }
 
-  // Function to handle stock out form submission
-  const handleStockOutSubmit = (data: { quantity: number; perUnitPrice: number; reasonForDeduction: string; supplier?: string; supplierName?: string; dateTime: string; notes: string }) => {
+  // Function to handle record usage form submission
+  const handleRecordUsageSubmit = (data: { quantity: number; perUnitPrice: number; reasonForDeduction: string; supplier?: string; supplierName?: string; dateTime: string; notes: string }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -426,7 +426,7 @@ export default function Dashboard() {
           minute: '2-digit',
           hour12: true 
         }),
-        type: "Stock out" as const,
+        type: "Usage" as const,
         quantity: data.quantity,
         measuringUnit: selectedItem.measuringUnit,
         party: party,
@@ -439,7 +439,7 @@ export default function Dashboard() {
       const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
       localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
       
-      addToast('success', `Deducted ${data.quantity} ${selectedItem.measuringUnit} from ${selectedItem.name}`)
+      addToast('success', `Recorded usage of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
       setShowStockOutForm(false)
       setSelectedItem(null)
     }
@@ -483,8 +483,8 @@ export default function Dashboard() {
         const reorderLevel = parseInt(formData.reorderLevel) || 0
         
         if (quantity === 0) return "Out of Stock"
-        if (quantity <= reorderLevel) return "Low Stock"
-        return "In Stock"
+        if (quantity <= reorderLevel) return "Low Quantity"
+        return "Available"
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       image: "/avatars/default.jpg",
@@ -511,7 +511,7 @@ export default function Dashboard() {
           minute: '2-digit',
           hour12: true 
         }),
-        type: "Initial stock" as const,
+        type: "Opening Stock" as const,
         quantity: parseInt(formData.quantity),
         measuringUnit: formData.measuringUnit,
         party: "",
@@ -559,8 +559,8 @@ export default function Dashboard() {
         const reorderLevel = parseInt(formData.reorderLevel) || 0
         
         if (quantity === 0) return "Out of Stock"
-        if (quantity <= reorderLevel) return "Low Stock"
-        return "In Stock"
+        if (quantity <= reorderLevel) return "Low Quantity"
+        return "Available"
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       description: formData.description,
@@ -786,7 +786,7 @@ export default function Dashboard() {
                 value="stock-history" 
                 className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
-                Stock history
+                Activity Logs
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -1829,15 +1829,15 @@ export default function Dashboard() {
                           <TableCell>
                             <Badge 
                               className={
-                                item.status === "In Stock" 
+                                item.status === "Available" 
                                   ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                  : item.status === "Low Stock"
+                                  : item.status === "Low Quantity"
                                   ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
                                   : "bg-red-100 text-red-800 hover:bg-red-100"
                               }
                             >
-                              {item.status === "In Stock" && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {item.status === "Low Stock" && <AlertTriangle className="h-3 w-3 mr-1" />}
+                              {item.status === "Available" && <CheckCircle className="h-3 w-3 mr-1" />}
+                              {item.status === "Low Quantity" && <AlertTriangle className="h-3 w-3 mr-1" />}
                               {item.status === "Out of Stock" && <AlertTriangle className="h-3 w-3 mr-1" />}
                               {item.status}
                             </Badge>
@@ -1857,13 +1857,13 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStockIn(item); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordPurchaseAction(item); }}>
                                   <Plus className="mr-2 h-4 w-4" />
-                                  Stock in
+                                  Record Purchase
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStockOutAction(item); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordUsageAction(item); }}>
                                   <Minus className="mr-2 h-4 w-4" />
-                                  Stock out
+                                  Record Usage
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditStockItem(item); }}>
                                   <Edit className="mr-2 h-4 w-4" />
@@ -1872,7 +1872,7 @@ export default function Dashboard() {
                                 <DropdownMenuItem asChild>
                                   <Link href={`/stock-item/${item.id}`}>
                                     <Clock className="mr-2 h-4 w-4" />
-                                    View History
+                                    View Activity Logs
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
@@ -1925,8 +1925,8 @@ export default function Dashboard() {
 
             <TabsContent value="stock-history" className="space-y-6">
               <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Stock History</h2>
-                <p className="text-gray-600 mt-2">View historical inventory changes and transactions.</p>
+                <h2 className="text-xl font-semibold text-gray-900">Activity Logs</h2>
+                <p className="text-gray-600 mt-2">View all stock movements and usage history.</p>
               </div>
             </TabsContent>
           </Tabs>
@@ -1939,18 +1939,18 @@ export default function Dashboard() {
           itemName={selectedItem.name}
           measuringUnit={selectedItem.measuringUnit}
           onClose={() => setShowAddStockForm(false)}
-          onSubmit={handleAddStock}
+          onSubmit={handleRecordPurchaseSubmit}
         />
       )}
 
-      {/* Stock Out Form Modal */}
+      {/* Record Usage Form Modal */}
       {showStockOutForm && selectedItem && (
         <StockOutForm
           itemName={selectedItem.name}
           measuringUnit={selectedItem.measuringUnit}
           currentStock={selectedItem.quantity}
           onClose={() => setShowStockOutForm(false)}
-          onSubmit={handleStockOutSubmit}
+          onSubmit={handleRecordUsageSubmit}
         />
       )}
 

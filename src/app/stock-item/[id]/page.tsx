@@ -48,7 +48,7 @@ interface StockTransaction {
   stockItemId: number
   date: string
   time: string
-  type: "Stock in" | "Stock out" | "Initial stock"
+  type: "Purchase" | "Usage" | "Opening Stock"
   quantity: number
   measuringUnit: string
   party: string
@@ -123,7 +123,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         minute: '2-digit',
         hour12: true 
       }),
-      type: "Stock in" as const,
+      type: "Purchase" as const,
       quantity: data.quantity,
       measuringUnit: stockItem?.measuringUnit || "Kg",
       party: data.supplierName,
@@ -213,7 +213,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         minute: '2-digit',
         hour12: true 
       }),
-      type: "Stock out" as const,
+      type: "Usage" as const,
       quantity: data.quantity,
       measuringUnit: stockItem?.measuringUnit || "Kg",
       party: party,
@@ -276,9 +276,9 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         let totalQuantity = 0
         
         itemTransactions.forEach((transaction: StockTransaction) => {
-          if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+          if (transaction.type === "Purchase" || transaction.type === "Opening Stock") {
             totalQuantity += transaction.quantity
-          } else if (transaction.type === "Stock out") {
+          } else if (transaction.type === "Usage") {
             totalQuantity -= transaction.quantity
           }
         })
@@ -346,9 +346,9 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         let totalQuantity = 0
         
         itemTransactions.forEach((transaction: StockTransaction) => {
-          if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+          if (transaction.type === "Purchase" || transaction.type === "Opening Stock") {
             totalQuantity += transaction.quantity
-          } else if (transaction.type === "Stock out") {
+          } else if (transaction.type === "Usage") {
             totalQuantity -= transaction.quantity
           }
         })
@@ -396,7 +396,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
           stockItemId: parseInt(id),
           date: "3 June 2025",
           time: "2:44 PM",
-          type: "Stock in",
+          type: "Purchase",
           quantity: 100,
           measuringUnit: "Kg",
           party: "Ram Bahadur Phuyal",
@@ -408,7 +408,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
           stockItemId: parseInt(id),
           date: "2 June 2025",
           time: "11:53 AM",
-          type: "Stock out",
+          type: "Usage",
           quantity: 100,
           measuringUnit: "Kg",
           party: "SipnSkip Restaurant",
@@ -545,7 +545,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
                 >
-                  Manage stock levels
+                  Manage Stock
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -584,9 +584,9 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
                    <TableCell>
                      <Badge 
                        className={
-                         transaction.type === "Stock in" 
+                         transaction.type === "Purchase" 
                            ? "bg-green-100 text-green-800 hover:bg-green-100"
-                           : transaction.type === "Initial stock"
+                           : transaction.type === "Opening Stock"
                            ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
                            : "bg-red-100 text-red-800 hover:bg-red-100"
                        }

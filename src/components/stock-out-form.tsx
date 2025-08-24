@@ -61,13 +61,13 @@ export function StockOutForm({ itemName, measuringUnit, currentStock, onClose, o
     <Drawer
       open={true}
       onOpenChange={(open) => !open && onClose()}
-      title={`Deduct stock for ${itemName}`}
-      description="Record new stock received for this item. This will update the available quantity and keep your inventory accurate."
+      title={`Record Usage for ${itemName}`}
+      description="Record stock used in operations. This reduces your available inventory."
       footer={
         <DrawerFooter
           onCancel={onClose}
           onSubmit={handleSubmitClick}
-          submitText="Deduct stock"
+          submitText="Record Usage"
         />
       }
     >
