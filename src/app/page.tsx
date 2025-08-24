@@ -799,7 +799,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white flex">
             {/* Sidebar */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 h-screen z-10`}>
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 h-screen z-10 transition-all duration-300 ease-in-out`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center gap-3">
           <button 
@@ -814,42 +814,42 @@ export default function Dashboard() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Home className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Home</span>}
+        <nav className={`flex-1 space-y-2 ${isSidebarCollapsed ? 'p-2' : 'p-4'} transition-all duration-300 ease-in-out`}>
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Home className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Home</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <FileText className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Menu manager</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <FileText className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Menu manager</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} bg-gray-100 text-gray-900 rounded-lg transition-all duration-300 ease-out`}>
-            <Package className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Inventory</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} bg-gray-100 text-gray-900 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Package className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Inventory</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Square className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Areas and Tables</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Square className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Areas and Tables</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Users className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Members</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Users className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Members</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Clock className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Order history</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Clock className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Order history</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <TrendingUp className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Sales</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <TrendingUp className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Sales</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Activity className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Activity</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Activity className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Activity</span>
           </a>
-          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-out`}>
-            <Settings className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Profile and settings</span>}
+          <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-1 py-2' : 'w-full px-3 py-2 gap-3'} text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-300 ease-in-out overflow-hidden`}>
+            <Settings className={isSidebarCollapsed ? "h-5 w-5" : "h-5 w-5"} />
+            <span className={`font-inter text-base font-semibold leading-6 text-[#484848] transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'scale-0 w-0 h-0 opacity-0' : 'scale-100 w-auto h-auto opacity-100'}`}>Profile and settings</span>
           </a>
         </nav>
 
@@ -871,7 +871,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className={`flex-1 flex flex-col ${isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 ease-in-out`}>
         {/* Page Content */}
         <div className="flex-1 px-6 pb-6">
           <Tabs defaultValue="stock-item" className="w-full">
