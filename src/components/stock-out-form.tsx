@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Drawer, DrawerFooter } from "@/components/ui/drawer"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import { SupplierSelect } from "@/components/ui/supplier-select"
 
 interface StockOutFormProps {

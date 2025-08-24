@@ -15,7 +15,21 @@ interface StockItem {
   price: number
 }
 
+interface StockTransaction {
+  id: number
+  stockItemId: number
+  date: string
+  time: string
+  type: "Stock in" | "Stock out" | "Initial stock"
+  quantity: number
+  measuringUnit: string
+  party: string
+  stockValue: number
+  notes: string
+}
+
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -183,10 +197,10 @@ export default function Dashboard() {
         const transactions = JSON.parse(savedTransactions)
         
         const updatedItems = items.map((item: StockItem) => {
-          const itemTransactions = transactions.filter((t: any) => t.stockItemId === item.id)
+          const itemTransactions = transactions.filter((t: StockTransaction) => t.stockItemId === item.id)
           let totalQuantity = 0
           
-          itemTransactions.forEach((transaction: any) => {
+          itemTransactions.forEach((transaction: StockTransaction) => {
             if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
               totalQuantity += transaction.quantity
             } else if (transaction.type === "Stock out") {
@@ -300,7 +314,8 @@ export default function Dashboard() {
       reorderLevel: item.reorderLevel.toString(),
       description: item.description,
       icon: item.icon,
-      price: item.price ? item.price.toString() : ""
+      price: item.price ? item.price.toString() : "",
+      supplier: ""
     })
     setStockGroupSearch(item.category) // Set the search field to show current category
     setMeasuringUnitSearch(item.measuringUnit) // Set the search field to show current measuring unit
@@ -565,7 +580,8 @@ export default function Dashboard() {
       reorderLevel: "",
       description: "",
       icon: "",
-      price: ""
+      price: "",
+      supplier: ""
     })
     setEditingItem(null)
     setIsEditSheetOpen(false)
@@ -582,7 +598,8 @@ export default function Dashboard() {
       reorderLevel: "",
       description: "",
       icon: "",
-      price: ""
+      price: "",
+      supplier: ""
     })
     setEditingItem(null)
     setIsEditSheetOpen(false)
@@ -664,7 +681,7 @@ export default function Dashboard() {
             <Menu className="h-6 w-6" />
           </button>
           {!isSidebarCollapsed && (
-            <img src="/box-logo.svg" alt="Box" className="h-6 w-auto" />
+            <Image src="/box-logo.svg" alt="Box" width={24} height={24} className="h-6 w-auto" />
           )}
         </div>
 

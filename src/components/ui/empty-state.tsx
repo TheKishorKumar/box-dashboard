@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
 
@@ -40,9 +41,11 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
           <div className="flex flex-col items-center justify-center gap-4 text-center">
                          {image && (
                <div className="mb-3">
-                 <img 
+                 <Image 
                    src={image} 
                    alt="" 
+                   width={120}
+                   height={120}
                    className="h-30 w-30 object-contain"
                    aria-hidden="true"
                  />

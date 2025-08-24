@@ -26,6 +26,7 @@ import {
   Menu
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 interface StockItem {
   id: number
@@ -39,6 +40,7 @@ interface StockItem {
   description: string
   reorderLevel: number
   icon: string
+  price: number
 }
 
 interface StockTransaction {
@@ -145,7 +147,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
       const savedItems = localStorage.getItem('stockItems')
       if (savedItems) {
         const items = JSON.parse(savedItems)
-        const updatedItems = items.map((item: any) => 
+        const updatedItems = items.map((item: StockItem) => 
           item.id === stockItem.id ? updatedStockItem : item
         )
         localStorage.setItem('stockItems', JSON.stringify(updatedItems))
@@ -235,7 +237,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
       const savedItems = localStorage.getItem('stockItems')
       if (savedItems) {
         const items = JSON.parse(savedItems)
-        const updatedItems = items.map((item: any) => 
+        const updatedItems = items.map((item: StockItem) => 
           item.id === stockItem.id ? updatedStockItem : item
         )
         localStorage.setItem('stockItems', JSON.stringify(updatedItems))
@@ -287,7 +289,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         const savedItems = localStorage.getItem('stockItems')
         if (savedItems) {
           const items = JSON.parse(savedItems)
-          const updatedItems = items.map((item: any) => 
+          const updatedItems = items.map((item: StockItem) => 
             item.id === stockItem.id ? updatedStockItem : item
           )
           localStorage.setItem('stockItems', JSON.stringify(updatedItems))
@@ -357,7 +359,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         const savedItems = localStorage.getItem('stockItems')
         if (savedItems) {
           const items = JSON.parse(savedItems)
-          const updatedItems = items.map((item: any) => 
+          const updatedItems = items.map((item: StockItem) => 
             item.id === stockItem.id ? updatedStockItem : item
           )
           localStorage.setItem('stockItems', JSON.stringify(updatedItems))
@@ -458,7 +460,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
             <Menu className="h-6 w-6" />
           </button>
           {!isSidebarCollapsed && (
-            <img src="/box-logo.svg" alt="Box" className="h-6 w-auto" />
+            <Image src="/box-logo.svg" alt="Box" width={24} height={24} className="h-6 w-auto" />
           )}
         </div>
 
