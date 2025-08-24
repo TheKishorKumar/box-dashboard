@@ -5,12 +5,26 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 
+interface Supplier {
+  id: number
+  legalName: string
+  phoneNumber: string
+  taxNumber: string
+  email: string
+  address: string
+  contactPerson: string
+  createdAt: string
+  lastUpdated: string
+}
+
 interface SupplierSelectProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   required?: boolean
   className?: string
+  suppliers: Supplier[]
+  onAddSupplier?: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'lastUpdated'>) => void
 }
 
 export function SupplierSelect({ 
@@ -18,37 +32,52 @@ export function SupplierSelect({
   onChange, 
   placeholder = "Search or select supplier", 
   required = false,
-  className = ""
+  className = "",
+  suppliers = [],
+  onAddSupplier
 }: SupplierSelectProps) {
   const [supplierSearch, setSupplierSearch] = useState(value)
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false)
   const [showCreateSupplier, setShowCreateSupplier] = useState(false)
-  const [newSupplierName, setNewSupplierName] = useState("")
-  const [suppliers, setSuppliers] = useState([
-    { id: "supplier-1", name: "ABC Suppliers" },
-    { id: "supplier-2", name: "XYZ Corporation" },
-    { id: "supplier-3", name: "Quality Foods Ltd" },
-    { id: "supplier-4", name: "Fresh Market Supplies" }
-  ])
+  const [newSupplierData, setNewSupplierData] = useState({
+    legalName: "",
+    phoneNumber: "",
+    taxNumber: "",
+    email: "",
+    address: "",
+    contactPerson: ""
+  })
 
   // Filter suppliers based on search
   const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(supplierSearch.toLowerCase())
+    supplier.legalName.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.contactPerson.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.email.toLowerCase().includes(supplierSearch.toLowerCase())
   )
 
   const handleCreateSupplier = () => {
-    if (newSupplierName.trim()) {
-      const newSupplier = {
-        id: `supplier-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        name: newSupplierName.trim()
-      }
-      setSuppliers(prev => [...prev, newSupplier])
-      onChange(newSupplier.name)
-      setSupplierSearch(newSupplier.name)
-      setNewSupplierName("")
+    if (newSupplierData.legalName.trim() && onAddSupplier) {
+      onAddSupplier(newSupplierData)
+      onChange(newSupplierData.legalName)
+      setSupplierSearch(newSupplierData.legalName)
+      setNewSupplierData({
+        legalName: "",
+        phoneNumber: "",
+        taxNumber: "",
+        email: "",
+        address: "",
+        contactPerson: ""
+      })
       setShowCreateSupplier(false)
       setIsSupplierDropdownOpen(false)
     }
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setNewSupplierData(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
   // Handle clicking outside to close dropdown
@@ -93,13 +122,16 @@ export function SupplierSelect({
                 key={supplier.id}
                 type="button"
                 onClick={() => {
-                  onChange(supplier.name)
-                  setSupplierSearch(supplier.name)
+                  onChange(supplier.legalName)
+                  setSupplierSearch(supplier.legalName)
                   setIsSupplierDropdownOpen(false)
                 }}
                 className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
               >
-                {supplier.name}
+                <div className="font-medium">{supplier.legalName}</div>
+                {supplier.contactPerson && (
+                  <div className="text-sm text-gray-500">{supplier.contactPerson}</div>
+                )}
               </button>
             ))}
           </div>
@@ -112,9 +144,9 @@ export function SupplierSelect({
             {showCreateSupplier ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="Enter supplier name"
-                  value={newSupplierName}
-                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  placeholder="Legal name"
+                  value={newSupplierData.legalName}
+                  onChange={(e) => handleInputChange("legalName", e.target.value)}
                   className="h-8 text-sm"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -122,6 +154,12 @@ export function SupplierSelect({
                       handleCreateSupplier()
                     }
                   }}
+                />
+                <Input
+                  placeholder="Contact person (optional)"
+                  value={newSupplierData.contactPerson}
+                  onChange={(e) => handleInputChange("contactPerson", e.target.value)}
+                  className="h-8 text-sm"
                 />
                 <div className="flex gap-2">
                   <Button
@@ -141,7 +179,14 @@ export function SupplierSelect({
                     variant="outline"
                     onClick={() => {
                       setShowCreateSupplier(false)
-                      setNewSupplierName("")
+                      setNewSupplierData({
+                        legalName: "",
+                        phoneNumber: "",
+                        taxNumber: "",
+                        email: "",
+                        address: "",
+                        contactPerson: ""
+                      })
                     }}
                     className="flex-1 h-8 text-sm"
                   >

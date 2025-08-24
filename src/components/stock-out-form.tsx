@@ -8,10 +8,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Drawer, DrawerFooter } from "@/components/ui/drawer"
 import { SupplierSelect } from "@/components/ui/supplier-select"
 
+interface Supplier {
+  id: number
+  legalName: string
+  phoneNumber: string
+  taxNumber: string
+  email: string
+  address: string
+  contactPerson: string
+  createdAt: string
+  lastUpdated: string
+}
+
 interface StockOutFormProps {
   itemName: string
   measuringUnit: string
   currentStock: number
+  suppliers: Supplier[]
+  onAddSupplier?: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'lastUpdated'>) => void
   onClose: () => void
   onSubmit: (data: StockOutData) => void
 }
@@ -26,7 +40,7 @@ interface StockOutData {
   notes: string
 }
 
-export function StockOutForm({ itemName, measuringUnit, currentStock, onClose, onSubmit }: StockOutFormProps) {
+export function StockOutForm({ itemName, measuringUnit, currentStock, suppliers, onAddSupplier, onClose, onSubmit }: StockOutFormProps) {
   const [formData, setFormData] = useState<StockOutData>({
     perUnitPrice: 0,
     quantity: 0,
@@ -124,6 +138,8 @@ export function StockOutForm({ itemName, measuringUnit, currentStock, onClose, o
                 handleInputChange("supplier", supplierId)
               }}
               placeholder="Search or select supplier"
+              suppliers={suppliers}
+              onAddSupplier={onAddSupplier}
               required
             />
           </div>

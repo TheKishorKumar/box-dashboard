@@ -7,9 +7,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { Drawer, DrawerFooter } from "@/components/ui/drawer"
 import { SupplierSelect } from "@/components/ui/supplier-select"
 
+interface Supplier {
+  id: number
+  legalName: string
+  phoneNumber: string
+  taxNumber: string
+  email: string
+  address: string
+  contactPerson: string
+  createdAt: string
+  lastUpdated: string
+}
+
 interface AddStockFormProps {
   itemName: string
   measuringUnit: string
+  suppliers: Supplier[]
+  onAddSupplier?: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'lastUpdated'>) => void
   onClose: () => void
   onSubmit: (data: AddStockData) => void
 }
@@ -22,7 +36,7 @@ interface AddStockData {
   notes: string
 }
 
-function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: AddStockFormProps) {
+function AddStockForm({ itemName, measuringUnit, suppliers, onAddSupplier, onClose, onSubmit }: AddStockFormProps) {
   const [formData, setFormData] = useState<AddStockData>({
     quantity: 0,
     perUnitPrice: 0,
@@ -101,6 +115,8 @@ function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: AddStockFo
             value={formData.supplierName}
             onChange={(value) => handleInputChange("supplierName", value)}
             placeholder="Search or select supplier"
+            suppliers={suppliers}
+            onAddSupplier={onAddSupplier}
           />
         </div>
 

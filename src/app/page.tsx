@@ -43,6 +43,18 @@ interface StockGroup {
   createdAt: string
 }
 
+interface Supplier {
+  id: number
+  legalName: string
+  phoneNumber: string
+  taxNumber: string
+  email: string
+  address: string
+  contactPerson: string
+  createdAt: string
+  lastUpdated: string
+}
+
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -80,6 +92,10 @@ import {
   X
 } from "lucide-react"
 import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
+import { SuppliersEmptyState } from "@/components/suppliers-empty-state"
+import { ActivityLogsEmptyState } from "@/components/activity-logs-empty-state"
+import { MeasuringUnitsEmptyState } from "@/components/measuring-units-empty-state"
+import { StockGroupsEmptyState } from "@/components/stock-groups-empty-state"
 import { SupplierSelect } from "@/components/ui/supplier-select"
 import Link from "next/link"
 import { formatNepaliCurrency } from "@/lib/utils"
@@ -141,6 +157,25 @@ export default function Dashboard() {
   ])
   const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
   const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
+  
+  // Supplier state management
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierSearch, setSupplierSearch] = useState("")
+  const [isSupplierSheetOpen, setIsSupplierSheetOpen] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [supplierFormData, setSupplierFormData] = useState({
+    legalName: "",
+    phoneNumber: "",
+    taxNumber: "",
+    email: "",
+    address: "",
+    contactPerson: ""
+  })
+
+  // Settings state
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false)
+  const [showPopulateConfirmation, setShowPopulateConfirmation] = useState(false)
+  
   const defaultMeasuringUnitsList = [
     "kg",
     "g", 
@@ -178,23 +213,31 @@ export default function Dashboard() {
     }
   }
 
-  // Custom setter that saves stock groups to localStorage
-  const updateStockGroups = (newGroups: string[]) => {
-    setStockGroups(newGroups)
+
+
+  // Custom setter that saves suppliers to localStorage
+  const updateSuppliers = (newSuppliers: Supplier[]) => {
+    setSuppliers(newSuppliers)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('stockGroups', JSON.stringify(newGroups))
+      localStorage.setItem('suppliers', JSON.stringify(newSuppliers))
     }
   }
 
   // Handle creating a new stock group
   const handleCreateGroup = () => {
     if (newGroupName.trim()) {
-      const newGroup = newGroupName.trim()
-      updateStockGroups([...stockGroups, newGroup])
-      handleInputChange("category", newGroup)
+      const newGroup: StockGroup = {
+        id: generateUniqueId(),
+        name: newGroupName.trim(),
+        description: "",
+        itemCount: 0,
+        createdAt: new Date().toISOString()
+      }
+      updateStockGroupsData([...stockGroupsData, newGroup])
+      handleInputChange("category", newGroup.name)
       setNewGroupName("")
       setShowCreateGroup(false)
-      addToast('success', `Stock group "${newGroup}" created successfully`)
+      addToast('success', `Stock group "${newGroup.name}" created successfully`)
     }
   }
 
@@ -223,6 +266,322 @@ export default function Dashboard() {
   const filteredDefaultMeasuringUnits = defaultMeasuringUnitsList.filter(unit =>
     unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
   )
+
+  // Filter suppliers based on search
+  const filteredSuppliers = suppliers.filter(supplier =>
+    supplier.legalName.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.contactPerson.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.email.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    supplier.phoneNumber.includes(supplierSearch)
+  )
+
+  // Supplier form handling
+  const handleSupplierInputChange = (field: string, value: string) => {
+    setSupplierFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleAddSupplier = () => {
+    setEditingSupplier(null)
+    setSupplierFormData({
+      legalName: "",
+      phoneNumber: "",
+      taxNumber: "",
+      email: "",
+      address: "",
+      contactPerson: ""
+    })
+    setIsSupplierSheetOpen(true)
+  }
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier)
+    setSupplierFormData({
+      legalName: supplier.legalName,
+      phoneNumber: supplier.phoneNumber,
+      taxNumber: supplier.taxNumber,
+      email: supplier.email,
+      address: supplier.address,
+      contactPerson: supplier.contactPerson
+    })
+    setIsSupplierSheetOpen(true)
+  }
+
+  const handleDeleteSupplier = (supplier: Supplier) => {
+    const updatedSuppliers = suppliers.filter(s => s.id !== supplier.id)
+    updateSuppliers(updatedSuppliers)
+    addToast('success', `Supplier "${supplier.legalName}" deleted successfully`)
+  }
+
+  const handleSupplierSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!supplierFormData.legalName.trim()) {
+      addToast('error', 'Legal name is required')
+      return
+    }
+
+    if (editingSupplier) {
+      // Update existing supplier
+      const updatedSuppliers = suppliers.map(supplier =>
+        supplier.id === editingSupplier.id
+          ? {
+              ...supplier,
+              ...supplierFormData,
+              lastUpdated: new Date().toISOString()
+            }
+          : supplier
+      )
+      updateSuppliers(updatedSuppliers)
+      addToast('success', `Supplier "${supplierFormData.legalName}" updated successfully`)
+    } else {
+      // Create new supplier
+      const newSupplier: Supplier = {
+        id: generateUniqueId(),
+        ...supplierFormData,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      }
+      updateSuppliers([...suppliers, newSupplier])
+      addToast('success', `Supplier "${supplierFormData.legalName}" created successfully`)
+    }
+
+    setIsSupplierSheetOpen(false)
+    setEditingSupplier(null)
+    setSupplierFormData({
+      legalName: "",
+      phoneNumber: "",
+      taxNumber: "",
+      email: "",
+      address: "",
+      contactPerson: ""
+    })
+  }
+
+  const handleAddAnotherSupplier = () => {
+    if (!supplierFormData.legalName.trim()) {
+      addToast('error', 'Legal name is required')
+      return
+    }
+
+    // Create new supplier
+    const newSupplier: Supplier = {
+      id: generateUniqueId(),
+      ...supplierFormData,
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
+    }
+    updateSuppliers([...suppliers, newSupplier])
+    addToast('success', `Supplier "${supplierFormData.legalName}" created successfully`)
+    
+    // Reset form but keep it open
+    setSupplierFormData({
+      legalName: "",
+      phoneNumber: "",
+      taxNumber: "",
+      email: "",
+      address: "",
+      contactPerson: ""
+    })
+  }
+
+  const handleAddSupplierFromSelect = (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'lastUpdated'>) => {
+    const newSupplier: Supplier = {
+      id: generateUniqueId(),
+      ...supplierData,
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
+    }
+    updateSuppliers([...suppliers, newSupplier])
+    addToast('success', `Supplier "${supplierData.legalName}" created successfully`)
+  }
+
+  // Settings functions
+  const handleResetAllData = () => {
+    // Reset all data to default state
+    updateStockItems([])
+    updateSuppliers([])
+    updateStockGroups([])
+    setStockTransactions([])
+    setMeasuringUnitsData(defaultMeasuringUnits)
+    setStockGroupsData(defaultStockGroups)
+    
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('stockItems')
+      localStorage.removeItem('suppliers')
+      localStorage.removeItem('stockGroups')
+      localStorage.removeItem('stockTransactions')
+      localStorage.removeItem('measuringUnits')
+      localStorage.removeItem('stockGroupsData')
+    }
+    
+    setShowResetConfirmation(false)
+    addToast('success', 'All data has been reset to default state')
+  }
+
+  const handlePopulateSampleData = () => {
+    // Sample stock items
+    const sampleStockItems: StockItem[] = [
+      {
+        id: generateUniqueId(),
+        name: "Tomatoes",
+        category: "Vegetables",
+        measuringUnit: "kg",
+        quantity: 25,
+        status: "Available",
+        lastUpdated: new Date().toISOString(),
+        image: "",
+        description: "Fresh red tomatoes for cooking",
+        reorderLevel: 10,
+        icon: "🍅",
+        price: 120
+      },
+      {
+        id: generateUniqueId(),
+        name: "Chicken Breast",
+        category: "Meat",
+        measuringUnit: "kg",
+        quantity: 15,
+        status: "Available",
+        lastUpdated: new Date().toISOString(),
+        image: "",
+        description: "Fresh chicken breast for cooking",
+        reorderLevel: 5,
+        icon: "🍗",
+        price: 450
+      },
+      {
+        id: generateUniqueId(),
+        name: "Milk",
+        category: "Dairy",
+        measuringUnit: "L",
+        quantity: 20,
+        status: "Available",
+        lastUpdated: new Date().toISOString(),
+        image: "",
+        description: "Fresh whole milk",
+        reorderLevel: 8,
+        icon: "🥛",
+        price: 180
+      },
+      {
+        id: generateUniqueId(),
+        name: "Rice",
+        category: "Grains",
+        measuringUnit: "kg",
+        quantity: 50,
+        status: "Available",
+        lastUpdated: new Date().toISOString(),
+        image: "",
+        description: "Basmati rice for cooking",
+        reorderLevel: 15,
+        icon: "🍚",
+        price: 200
+      },
+      {
+        id: generateUniqueId(),
+        name: "Onions",
+        category: "Vegetables",
+        measuringUnit: "kg",
+        quantity: 8,
+        status: "Low Quantity",
+        lastUpdated: new Date().toISOString(),
+        image: "",
+        description: "Fresh onions for cooking",
+        reorderLevel: 10,
+        icon: "🧅",
+        price: 80
+      }
+    ]
+
+    // Sample suppliers
+    const sampleSuppliers: Supplier[] = [
+      {
+        id: generateUniqueId(),
+        legalName: "ABC Suppliers Pvt. Ltd.",
+        phoneNumber: "+977 1-2345678",
+        taxNumber: "123456789",
+        email: "contact@abcsuppliers.com",
+        address: "123 Main Street, Kathmandu, Nepal",
+        contactPerson: "John Doe",
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: generateUniqueId(),
+        legalName: "Fresh Market Supplies",
+        phoneNumber: "+977 1-8765432",
+        taxNumber: "987654321",
+        email: "info@freshmarket.com",
+        address: "456 Market Road, Lalitpur, Nepal",
+        contactPerson: "Jane Smith",
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: generateUniqueId(),
+        legalName: "Quality Foods Ltd.",
+        phoneNumber: "+977 1-5555555",
+        taxNumber: "555555555",
+        email: "sales@qualityfoods.com",
+        address: "789 Business District, Bhaktapur, Nepal",
+        contactPerson: "Mike Johnson",
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      }
+    ]
+
+    // Sample stock transactions
+    const sampleTransactions: StockTransaction[] = [
+      {
+        id: generateUniqueId(),
+        stockItemId: sampleStockItems[0].id,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toISOString().split('T')[1].split('.')[0],
+        type: "Purchase",
+        quantity: 30,
+        measuringUnit: "kg",
+        party: "ABC Suppliers Pvt. Ltd.",
+        stockValue: 3600,
+        notes: "Initial stock purchase"
+      },
+      {
+        id: generateUniqueId(),
+        stockItemId: sampleStockItems[0].id,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toISOString().split('T')[1].split('.')[0],
+        type: "Usage",
+        quantity: 5,
+        measuringUnit: "kg",
+        party: "Kitchen",
+        stockValue: 600,
+        notes: "Used for cooking"
+      },
+      {
+        id: generateUniqueId(),
+        stockItemId: sampleStockItems[1].id,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toISOString().split('T')[1].split('.')[0],
+        type: "Purchase",
+        quantity: 20,
+        measuringUnit: "kg",
+        party: "Fresh Market Supplies",
+        stockValue: 9000,
+        notes: "Weekly meat supply"
+      }
+    ]
+
+    // Update all data
+    updateStockItems(sampleStockItems)
+    updateSuppliers(sampleSuppliers)
+    setStockTransactions(sampleTransactions)
+    
+    setShowPopulateConfirmation(false)
+    addToast('success', 'Sample data has been populated successfully')
+  }
 
   // Load data from localStorage after hydration
   useEffect(() => {
@@ -265,9 +624,17 @@ export default function Dashboard() {
     }
     
     // Load stock groups from localStorage
-    const savedGroups = localStorage.getItem('stockGroups')
-    if (savedGroups) {
-      setStockGroups(JSON.parse(savedGroups))
+    const savedStockGroups = localStorage.getItem('stockGroupsData')
+    if (savedStockGroups) {
+      const stockGroupsData = JSON.parse(savedStockGroups)
+      setStockGroupsData(stockGroupsData)
+      // Sync stockGroups array with stockGroupsData names
+      setStockGroups(stockGroupsData.map((group: StockGroup) => group.name))
+    } else {
+      // Initialize with default stock groups if none exist
+      setStockGroupsData(defaultStockGroups)
+      // Sync stockGroups array with default stock groups names
+      setStockGroups(defaultStockGroups.map(group => group.name))
     }
     
     // Load measuring units from localStorage
@@ -279,15 +646,6 @@ export default function Dashboard() {
       setMeasuringUnitsData(defaultMeasuringUnits)
     }
     
-    // Load stock groups from localStorage
-    const savedStockGroups = localStorage.getItem('stockGroupsData')
-    if (savedStockGroups) {
-      setStockGroupsData(JSON.parse(savedStockGroups))
-    } else {
-      // Initialize with default stock groups if none exist
-      setStockGroupsData(defaultStockGroups)
-    }
-    
     // Load stock transactions from localStorage
     const savedTransactions = localStorage.getItem('stockTransactions')
     if (savedTransactions) {
@@ -296,6 +654,12 @@ export default function Dashboard() {
       setStockTransactions(transactions)
     } else {
       console.log('No transactions found in localStorage')
+    }
+    
+    // Load suppliers from localStorage
+    const savedSuppliers = localStorage.getItem('suppliers')
+    if (savedSuppliers) {
+      setSuppliers(JSON.parse(savedSuppliers))
     }
     
     setIsHydrated(true)
@@ -468,19 +832,14 @@ export default function Dashboard() {
       
       // Helper function to get supplier name from ID
       const getSupplierName = (supplierId: string) => {
-        const suppliers = [
-          { id: "supplier-1", name: "ABC Suppliers" },
-          { id: "supplier-2", name: "XYZ Corporation" },
-          { id: "supplier-3", name: "Quality Foods Ltd" },
-          { id: "supplier-4", name: "Fresh Market Supplies" }
-        ]
-        
-        if (supplierId.startsWith('supplier-') && supplierId !== 'supplier-1' && supplierId !== 'supplier-2' && supplierId !== 'supplier-3' && supplierId !== 'supplier-4') {
+        // If it's a new supplier created from the form, use the supplierName
+        if (supplierId.startsWith('supplier-') && !supplierId.match(/supplier-\d+/)) {
           return data.supplierName || "New Supplier"
         }
         
-        const supplier = suppliers.find(s => s.id === supplierId)
-        return supplier ? supplier.name : "Unknown Supplier"
+        // Try to find the supplier in the actual suppliers state
+        const supplier = suppliers.find(s => s.id.toString() === supplierId || s.legalName === supplierId)
+        return supplier ? supplier.legalName : data.supplierName || "Unknown Supplier"
       }
       
       // Determine the party based on the reason for deduction
@@ -841,6 +1200,8 @@ export default function Dashboard() {
   // Custom setter that saves stock groups to localStorage
   const updateStockGroupsData = (newGroups: StockGroup[]) => {
     setStockGroupsData(newGroups)
+    // Sync stockGroups array with the names from stockGroupsData
+    setStockGroups(newGroups.map(group => group.name))
     if (typeof window !== 'undefined') {
       localStorage.setItem('stockGroupsData', JSON.stringify(newGroups))
     }
@@ -1145,6 +1506,12 @@ export default function Dashboard() {
                 className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                   Activity Logs
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+              >
+                  Settings
               </TabsTrigger>
             </TabsList>
         </div>
@@ -1563,6 +1930,8 @@ export default function Dashboard() {
                               value={formData.supplier || ""}
                               onChange={(value) => handleInputChange("supplier", value)}
                               placeholder="Search or select supplier"
+                              suppliers={suppliers}
+                              onAddSupplier={handleAddSupplierFromSelect}
                             />
                           </div>
                           
@@ -2057,6 +2426,8 @@ export default function Dashboard() {
                             value={formData.supplier || ""}
                             onChange={(value) => handleInputChange("supplier", value)}
                             placeholder="Search or select supplier"
+                            suppliers={suppliers}
+                            onAddSupplier={handleAddSupplierFromSelect}
                           />
                         </div>
                         
@@ -2264,10 +2635,268 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="suppliers" className="space-y-6">
-              <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Suppliers</h2>
-                <p className="text-gray-600 mt-2">Manage your suppliers and vendor information.</p>
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
+                  <p className="text-gray-600 mt-1">
+                    Manage your suppliers and vendor information for better inventory tracking.
+                  </p>
+                </div>
+                {suppliers.length > 0 && (
+                  <Button 
+                    onClick={handleAddSupplier}
+                    className="text-white" 
+                    style={{ backgroundColor: '#D8550D' }} 
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Supplier
+                  </Button>
+                )}
               </div>
+
+              {/* Search */}
+              {suppliers.length > 0 && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                      placeholder="Search suppliers" 
+                      className="pl-10 bg-white border-gray-200"
+                      value={supplierSearch}
+                      onChange={(e) => setSupplierSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Suppliers Table */}
+              <div>
+                {!isHydrated ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : suppliers.length === 0 ? (
+                  <SuppliersEmptyState onAddSupplier={handleAddSupplier} />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Supplier</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Tax Number</TableHead>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSuppliers.map((supplier) => (
+                        <TableRow key={supplier.id} className="hover:bg-gray-50 transition-colors">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-gray-100 text-gray-600 text-lg">
+                                  {supplier.legalName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">{supplier.legalName}</div>
+                                <div className="text-sm text-gray-500 font-normal">
+                                  {supplier.contactPerson || "No contact person"}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{supplier.phoneNumber}</div>
+                            <div className="text-sm text-gray-500 font-normal">{supplier.email}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{supplier.taxNumber || "Not provided"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-600 max-w-[200px] truncate">
+                              {supplier.address || "No address provided"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{new Date(supplier.lastUpdated).toLocaleDateString()}</div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit supplier
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteSupplier(supplier)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete supplier
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+
+              {/* Supplier Creation/Edit Sheet */}
+              <Sheet open={isSupplierSheetOpen} onOpenChange={setIsSupplierSheetOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+                  <form onSubmit={handleSupplierSubmit} className="flex flex-col h-full">
+                    <div className="px-6 flex-1">
+                      <SheetHeader className="pl-0">
+                        <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                          {editingSupplier ? "Edit supplier" : "Create supplier"}
+                        </SheetTitle>
+                        <SheetDescription>
+                          {editingSupplier 
+                            ? "Update the supplier details." 
+                            : "Add a new supplier to your vendor list."
+                          }
+                        </SheetDescription>
+                      </SheetHeader>
+                      
+                      {/* Separator line */}
+                      <div className="border-b border-gray-200 mb-6"></div>
+                      
+                      <div className="space-y-6 mt-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="legal-name" className="text-sm font-medium">
+                            Legal name *
+                          </Label>
+                          <Input 
+                            id="legal-name" 
+                            placeholder="E.g. ABC Suppliers Pvt. Ltd." 
+                            className="w-full"
+                            value={supplierFormData.legalName}
+                            onChange={(e) => handleSupplierInputChange("legalName", e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="contact-person" className="text-sm font-medium">
+                            Contact person
+                          </Label>
+                          <Input 
+                            id="contact-person" 
+                            placeholder="E.g. John Doe" 
+                            className="w-full"
+                            value={supplierFormData.contactPerson}
+                            onChange={(e) => handleSupplierInputChange("contactPerson", e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone-number" className="text-sm font-medium">
+                            Phone number
+                          </Label>
+                          <Input 
+                            id="phone-number" 
+                            placeholder="E.g. +977 1-2345678" 
+                            className="w-full"
+                            value={supplierFormData.phoneNumber}
+                            onChange={(e) => handleSupplierInputChange("phoneNumber", e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="email" className="text-sm font-medium">
+                            Email
+                          </Label>
+                          <Input 
+                            id="email" 
+                            type="email"
+                            placeholder="E.g. contact@abcsuppliers.com" 
+                            className="w-full"
+                            value={supplierFormData.email}
+                            onChange={(e) => handleSupplierInputChange("email", e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="tax-number" className="text-sm font-medium">
+                            Tax number
+                          </Label>
+                          <Input 
+                            id="tax-number" 
+                            placeholder="E.g. 123456789" 
+                            className="w-full"
+                            value={supplierFormData.taxNumber}
+                            onChange={(e) => handleSupplierInputChange("taxNumber", e.target.value)}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="address" className="text-sm font-medium">
+                            Address
+                          </Label>
+                          <Textarea 
+                            id="address" 
+                            placeholder="E.g. 123 Main Street, Kathmandu, Nepal" 
+                            className="w-full"
+                            value={supplierFormData.address}
+                            onChange={(e) => handleSupplierInputChange("address", e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Footer with actions */}
+                    <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => {
+                          if (editingSupplier) {
+                            // Cancel - close form
+                            setIsSupplierSheetOpen(false)
+                            setEditingSupplier(null)
+                            setSupplierFormData({
+                              legalName: "",
+                              phoneNumber: "",
+                              taxNumber: "",
+                              email: "",
+                              address: "",
+                              contactPerson: ""
+                            })
+                          } else {
+                            // Add another - save and keep form open
+                            handleAddAnotherSupplier()
+                          }
+                        }}
+                      >
+                        {editingSupplier ? "Cancel" : "Add another"}
+                      </Button>
+                      <Button 
+                        type="submit"
+                        className="text-white flex-1" 
+                        style={{ backgroundColor: '#D8550D' }}
+                      >
+                        {editingSupplier ? "Update Supplier" : "Save Supplier"}
+                      </Button>
+                    </div>
+                  </form>
+                </SheetContent>
+              </Sheet>
             </TabsContent>
 
             <TabsContent value="measuring-unit" className="space-y-6">
@@ -2315,25 +2944,7 @@ export default function Dashboard() {
                     <div className="text-gray-500">Loading...</div>
                   </div>
                 ) : measuringUnitsData.length === 0 ? (
-              <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No measuring units added yet</h3>
-                    <p className="text-gray-600 mb-6">Start managing your measurement units by adding your first unit.</p>
-                    <Button 
-                      onClick={() => setShowCreateMeasuringUnit(true)}
-                      className="text-white"
-                      style={{ backgroundColor: '#D8550D' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add First Measuring Unit
-                    </Button>
-                  </div>
+                  <MeasuringUnitsEmptyState onAddMeasuringUnit={() => setShowCreateMeasuringUnit(true)} />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -2440,25 +3051,7 @@ export default function Dashboard() {
                     <div className="text-gray-500">Loading...</div>
                   </div>
                 ) : stockGroupsData.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No stock groups added yet</h3>
-                    <p className="text-gray-600 mb-6">Start organizing your inventory by adding your first stock group.</p>
-                    <Button 
-                      onClick={() => setShowCreateStockGroup(true)}
-                      className="text-white"
-                      style={{ backgroundColor: '#D8550D' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add First Stock Group
-                    </Button>
-                  </div>
+                  <StockGroupsEmptyState onAddStockGroup={() => setShowCreateStockGroup(true)} />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -2579,13 +3172,7 @@ export default function Dashboard() {
                     <div className="text-gray-500">Loading...</div>
                   </div>
                 ) : filteredActivityLogs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Activity className="w-12 h-12 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No activity logs found</h3>
-                    <p className="text-gray-600 mb-6">Start recording stock movements to see activity history.</p>
-                  </div>
+                  <ActivityLogsEmptyState />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -2678,6 +3265,97 @@ export default function Dashboard() {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="settings" className="space-y-6">
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+                  <p className="text-gray-600 mt-1">
+                    Manage your application settings and data
+                  </p>
+                </div>
+              </div>
+
+              {/* Settings Content */}
+              <div className="space-y-8">
+                {/* Data Management Section */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Data Management</h3>
+                      <p className="text-sm text-gray-600">
+                        Reset all data to default state or populate with sample data for testing.
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowResetConfirmation(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Reset All Data
+                      </Button>
+                      <Button 
+                        onClick={() => setShowPopulateConfirmation(true)}
+                        className="text-white flex items-center gap-2"
+                        style={{ backgroundColor: '#D8550D' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Populate Sample Data
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Application Info Section */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Application Information</h3>
+                      <p className="text-sm text-gray-600">
+                        Details about your current application state and data.
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Stock Items:</span>
+                          <span className="text-sm font-medium">{stockItems.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Suppliers:</span>
+                          <span className="text-sm font-medium">{suppliers.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Stock Groups:</span>
+                          <span className="text-sm font-medium">{stockGroupsData.length}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Measuring Units:</span>
+                          <span className="text-sm font-medium">{measuringUnitsData.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Transactions:</span>
+                          <span className="text-sm font-medium">{stockTransactions.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Last Updated:</span>
+                          <span className="text-sm font-medium">{new Date().toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
@@ -2687,6 +3365,8 @@ export default function Dashboard() {
         <AddStockForm
           itemName={selectedItem.name}
           measuringUnit={selectedItem.measuringUnit}
+          suppliers={suppliers}
+          onAddSupplier={handleAddSupplierFromSelect}
           onClose={() => setShowAddStockForm(false)}
           onSubmit={handleRecordPurchaseSubmit}
         />
@@ -2698,6 +3378,8 @@ export default function Dashboard() {
           itemName={selectedItem.name}
           measuringUnit={selectedItem.measuringUnit}
           currentStock={selectedItem.quantity}
+          suppliers={suppliers}
+          onAddSupplier={handleAddSupplierFromSelect}
           onClose={() => setShowStockOutForm(false)}
           onSubmit={handleRecordUsageSubmit}
         />
@@ -3177,6 +3859,94 @@ export default function Dashboard() {
                 className="px-6"
               >
                 Delete Record
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset All Data Confirmation Modal */}
+      {showResetConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close Icon */}
+            <button 
+              onClick={() => setShowResetConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Icon */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Reset All Data?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will permanently delete all your stock items, suppliers, transactions, and settings. This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowResetConfirmation(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleResetAllData}
+                className="px-6"
+              >
+                Reset All Data
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Populate Sample Data Confirmation Modal */}
+      {showPopulateConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close Icon */}
+            <button 
+              onClick={() => setShowPopulateConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Icon */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                <Plus className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Populate Sample Data?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will add sample stock items, suppliers, and transactions to help you get started. Existing data will be replaced.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPopulateConfirmation(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handlePopulateSampleData}
+                className="px-6 text-white"
+                style={{ backgroundColor: '#D8550D' }}
+              >
+                Populate Data
               </Button>
             </div>
           </div>
