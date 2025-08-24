@@ -50,6 +50,7 @@ import {
   CheckCircle
 } from "lucide-react"
 import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
+import { SupplierSelect } from "@/components/ui/supplier-select"
 import Link from "next/link"
 
 export default function Dashboard() {
@@ -174,7 +175,40 @@ export default function Dashboard() {
   useEffect(() => {
     const saved = localStorage.getItem('stockItems')
     if (saved) {
-      setStockItems(JSON.parse(saved))
+      const items = JSON.parse(saved)
+      
+      // Recalculate quantities based on transactions for consistency
+      const savedTransactions = localStorage.getItem('stockTransactions')
+      if (savedTransactions) {
+        const transactions = JSON.parse(savedTransactions)
+        
+        const updatedItems = items.map((item: StockItem) => {
+          const itemTransactions = transactions.filter((t: any) => t.stockItemId === item.id)
+          let totalQuantity = 0
+          
+          itemTransactions.forEach((transaction: any) => {
+            if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+              totalQuantity += transaction.quantity
+            } else if (transaction.type === "Stock out") {
+              totalQuantity -= transaction.quantity
+            }
+          })
+          
+          const newQuantity = Math.max(0, totalQuantity)
+          const status = (() => {
+            if (newQuantity === 0) return "Out of Stock"
+            if (newQuantity <= item.reorderLevel) return "Low Stock"
+            return "In Stock"
+          })()
+          return { ...item, quantity: newQuantity, status }
+        })
+        
+        setStockItems(updatedItems)
+        // Update localStorage with recalculated quantities
+        localStorage.setItem('stockItems', JSON.stringify(updatedItems))
+      } else {
+        setStockItems(items)
+      }
     }
     
     // Load stock groups from localStorage
@@ -184,6 +218,18 @@ export default function Dashboard() {
     }
     
     setIsHydrated(true)
+  }, [])
+
+  // Listen for localStorage changes to update stock items in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'stockItems' && e.newValue) {
+        setStockItems(JSON.parse(e.newValue))
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   // Handle clicking outside to close dropdowns
@@ -274,7 +320,7 @@ export default function Dashboard() {
   }
 
   // Function to handle add stock form submission
-  const handleAddStock = (data: { quantity: number }) => {
+  const handleAddStock = (data: { quantity: number; perUnitPrice: number; supplierName: string; dateTime: string; notes: string }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -283,6 +329,34 @@ export default function Dashboard() {
           : item
       )
       updateStockItems(updatedItems)
+      
+      // Create transaction record
+      const newTransaction = {
+        id: generateUniqueId(),
+        stockItemId: selectedItem.id,
+        date: new Date(data.dateTime).toLocaleDateString('en-US', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        }),
+        time: new Date(data.dateTime).toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        type: "Stock in" as const,
+        quantity: data.quantity,
+        measuringUnit: selectedItem.measuringUnit,
+        party: data.supplierName,
+        stockValue: data.quantity * data.perUnitPrice,
+        notes: data.notes || "-"
+      }
+      
+      // Save transaction to localStorage
+      const existingTransactions = localStorage.getItem('stockTransactions')
+      const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+      localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
+      
       addToast('success', `Added ${data.quantity} ${selectedItem.measuringUnit} to ${selectedItem.name}`)
       setShowAddStockForm(false)
       setSelectedItem(null)
@@ -290,7 +364,7 @@ export default function Dashboard() {
   }
 
   // Function to handle stock out form submission
-  const handleStockOutSubmit = (data: { quantity: number }) => {
+  const handleStockOutSubmit = (data: { quantity: number; perUnitPrice: number; reasonForDeduction: string; supplier?: string; supplierName?: string; dateTime: string; notes: string }) => {
     if (selectedItem) {
       // Update the stock item quantity
       const updatedItems = stockItems.map(item => 
@@ -299,6 +373,57 @@ export default function Dashboard() {
           : item
       )
       updateStockItems(updatedItems)
+      
+      // Helper function to get supplier name from ID
+      const getSupplierName = (supplierId: string) => {
+        const suppliers = [
+          { id: "supplier-1", name: "ABC Suppliers" },
+          { id: "supplier-2", name: "XYZ Corporation" },
+          { id: "supplier-3", name: "Quality Foods Ltd" },
+          { id: "supplier-4", name: "Fresh Market Supplies" }
+        ]
+        
+        if (supplierId.startsWith('supplier-') && supplierId !== 'supplier-1' && supplierId !== 'supplier-2' && supplierId !== 'supplier-3' && supplierId !== 'supplier-4') {
+          return data.supplierName || "New Supplier"
+        }
+        
+        const supplier = suppliers.find(s => s.id === supplierId)
+        return supplier ? supplier.name : "Unknown Supplier"
+      }
+      
+      // Determine the party based on the reason for deduction
+      let party = data.reasonForDeduction
+      if (data.reasonForDeduction === "returned-to-supplier" && data.supplier) {
+        party = getSupplierName(data.supplier)
+      }
+      
+      // Create transaction record
+      const newTransaction = {
+        id: generateUniqueId(),
+        stockItemId: selectedItem.id,
+        date: new Date(data.dateTime).toLocaleDateString('en-US', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        }),
+        time: new Date(data.dateTime).toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        type: "Stock out" as const,
+        quantity: data.quantity,
+        measuringUnit: selectedItem.measuringUnit,
+        party: party,
+        stockValue: data.quantity * data.perUnitPrice,
+        notes: data.notes || "-"
+      }
+      
+      // Save transaction to localStorage
+      const existingTransactions = localStorage.getItem('stockTransactions')
+      const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+      localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
+      
       addToast('success', `Deducted ${data.quantity} ${selectedItem.measuringUnit} from ${selectedItem.name}`)
       setShowStockOutForm(false)
       setSelectedItem(null)
@@ -313,7 +438,8 @@ export default function Dashboard() {
     reorderLevel: "",
     description: "",
     icon: "",
-    price: ""
+    price: "",
+    supplier: ""
   })
 
   // Ref for icon dropdown
@@ -337,7 +463,14 @@ export default function Dashboard() {
       category: formData.category,
       measuringUnit: formData.measuringUnit,
       quantity: parseInt(formData.quantity) || 0,
-      status: parseInt(formData.quantity) > 0 ? "In Stock" : "Out of Stock",
+      status: (() => {
+        const quantity = parseInt(formData.quantity) || 0
+        const reorderLevel = parseInt(formData.reorderLevel) || 0
+        
+        if (quantity === 0) return "Out of Stock"
+        if (quantity <= reorderLevel) return "Low Stock"
+        return "In Stock"
+      })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       image: "/avatars/default.jpg",
       description: formData.description,
@@ -348,6 +481,35 @@ export default function Dashboard() {
 
     updateStockItems([...stockItems, newItem])
     
+    // Create initial transaction for the new stock item
+    if (parseInt(formData.quantity) > 0) {
+      const initialTransaction = {
+        id: generateUniqueId(),
+        stockItemId: newItem.id,
+        date: new Date().toLocaleDateString('en-US', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric' 
+        }),
+        time: new Date().toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        type: "Initial stock" as const,
+        quantity: parseInt(formData.quantity),
+        measuringUnit: formData.measuringUnit,
+        party: "",
+        stockValue: parseInt(formData.quantity) * parseFloat(formData.price),
+        notes: "Initial stock creation"
+      }
+      
+      // Save transaction to localStorage
+      const existingTransactions = localStorage.getItem('stockTransactions')
+      const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+      localStorage.setItem('stockTransactions', JSON.stringify([initialTransaction, ...transactions]))
+    }
+    
     // Reset form
     setFormData({
       name: "",
@@ -357,7 +519,8 @@ export default function Dashboard() {
       reorderLevel: "",
       description: "",
       icon: "",
-      price: ""
+      price: "",
+      supplier: ""
     })
     
     setIsSheetOpen(false)
@@ -376,7 +539,14 @@ export default function Dashboard() {
       category: formData.category,
       measuringUnit: formData.measuringUnit,
       quantity: parseInt(formData.quantity) || 0,
-      status: parseInt(formData.quantity) > 0 ? "In Stock" : "Out of Stock",
+      status: (() => {
+        const quantity = parseInt(formData.quantity) || 0
+        const reorderLevel = parseInt(formData.reorderLevel) || 0
+        
+        if (quantity === 0) return "Out of Stock"
+        if (quantity <= reorderLevel) return "Low Stock"
+        return "In Stock"
+      })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
@@ -494,7 +664,7 @@ export default function Dashboard() {
             <Menu className="h-6 w-6" />
           </button>
           {!isSidebarCollapsed && (
-            <img src="/box-logo.svg" alt="BOX by Bottle" className="h-6 w-auto" />
+            <img src="/box-logo.svg" alt="Box" className="h-6 w-auto" />
           )}
         </div>
 
@@ -640,7 +810,7 @@ export default function Dashboard() {
                         <SheetHeader className="pl-0">
                           <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Create stock item</SheetTitle>
                           <SheetDescription>
-                            Add a new stock item to your inventory.
+                            Add a new stock item to your inventory with initial stock quantity.
                           </SheetDescription>
                         </SheetHeader>
                         
@@ -916,100 +1086,87 @@ export default function Dashboard() {
                             </div>
                           </div>
                           
-                          <div className="space-y-2">
-                            <Label htmlFor="measuring-unit" className="text-sm font-medium">
-                              Measuring unit *
-                            </Label>
-                            <div className="relative measuring-unit-dropdown">
-                              <Input
-                                placeholder="Search or select measuring unit"
-                                value={measuringUnitSearch}
-                                onChange={(e) => {
-                                  setMeasuringUnitSearch(e.target.value)
-                                  if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                                }}
-                                onFocus={() => setIsMeasuringUnitOpen(true)}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="initial-stock" className="text-sm font-medium">
+                                Initial stock *
+                              </Label>
+                              <Input 
+                                id="initial-stock" 
+                                type="number" 
+                                placeholder="E.g. 50" 
                                 className="w-full"
+                                value={formData.quantity}
+                                onChange={(e) => handleInputChange("quantity", e.target.value)}
                                 required
                               />
-                              
-                              {isMeasuringUnitOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                  {/* Units List - Fixed height for 5 items */}
-                                  <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredMeasuringUnits.map((unit) => (
-                                      <button
-                                        key={unit}
-                                        type="button"
-                                        onClick={() => {
-                                          handleInputChange("measuringUnit", unit)
-                                          setMeasuringUnitSearch(unit)
-                                          setIsMeasuringUnitOpen(false)
-                                        }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                      >
-                                        {unit === "kg" && "Kilograms (kg)"}
-                                        {unit === "g" && "Grams (g)"}
-                                        {unit === "L" && "Liters (L)"}
-                                        {unit === "ml" && "Milliliters (ml)"}
-                                        {unit === "pcs" && "Pieces (pcs)"}
-                                        {unit === "boxes" && "Boxes"}
-                                        {unit === "bottles" && "Bottles"}
-                                        {unit === "cans" && "Cans"}
-                                        {unit === "bags" && "Bags"}
-                                        {unit === "units" && "Units"}
-                                        {unit === "packs" && "Packs"}
-                                        {unit === "cartons" && "Cartons"}
-                                        {unit === "dozens" && "Dozens"}
-                                        {unit === "pairs" && "Pairs"}
-                                        {unit === "sets" && "Sets"}
-                                        {unit === "rolls" && "Rolls"}
-                                        {unit === "sheets" && "Sheets"}
-                                        {unit === "pieces" && "Pieces"}
-                                        {unit === "slices" && "Slices"}
-                                        {unit === "cups" && "Cups"}
-                                        {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                        {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                        {unit === "ounces" && "Ounces (oz)"}
-                                        {unit === "pounds" && "Pounds (lbs)"}
-                                        {unit === "quarts" && "Quarts (qt)"}
-                                        {unit === "gallons" && "Gallons (gal)"}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                             </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="current-stock" className="text-sm font-medium">
-                              Current stock *
-                            </Label>
-                            <Input 
-                              id="current-stock" 
-                              type="number" 
-                              placeholder="E.g. 50" 
-                              className="w-full"
-                              value={formData.quantity}
-                              onChange={(e) => handleInputChange("quantity", e.target.value)}
-                              required
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="reorder-level" className="text-sm font-medium">
-                              Reorder level
-                            </Label>
-                            <Input 
-                              id="reorder-level" 
-                              type="number" 
-                              placeholder="E.g. 10" 
-                              className="w-full"
-                              value={formData.reorderLevel}
-                              onChange={(e) => handleInputChange("reorderLevel", e.target.value)}
-                            />
-                            <p className="text-xs text-gray-500">Minimum quantity before reordering</p>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="measuring-unit" className="text-sm font-medium">
+                                Measuring unit *
+                              </Label>
+                              <div className="relative measuring-unit-dropdown">
+                                <Input
+                                  placeholder="Search or select measuring unit"
+                                  value={measuringUnitSearch}
+                                  onChange={(e) => {
+                                    setMeasuringUnitSearch(e.target.value)
+                                    if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
+                                  }}
+                                  onFocus={() => setIsMeasuringUnitOpen(true)}
+                                  className="w-full"
+                                  required
+                                />
+                                
+                                {isMeasuringUnitOpen && (
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                    {/* Units List - Fixed height for 5 items */}
+                                    <div className="max-h-[200px] overflow-y-auto">
+                                      {filteredMeasuringUnits.map((unit) => (
+                                        <button
+                                          key={unit}
+                                          type="button"
+                                          onClick={() => {
+                                            handleInputChange("measuringUnit", unit)
+                                            setMeasuringUnitSearch(unit)
+                                            setIsMeasuringUnitOpen(false)
+                                          }}
+                                          className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                        >
+                                          {unit === "kg" && "Kilograms (kg)"}
+                                          {unit === "g" && "Grams (g)"}
+                                          {unit === "L" && "Liters (L)"}
+                                          {unit === "ml" && "Milliliters (ml)"}
+                                          {unit === "pcs" && "Pieces (pcs)"}
+                                          {unit === "boxes" && "Boxes"}
+                                          {unit === "bottles" && "Bottles"}
+                                          {unit === "cans" && "Cans"}
+                                          {unit === "bags" && "Bags"}
+                                          {unit === "units" && "Units"}
+                                          {unit === "packs" && "Packs"}
+                                          {unit === "cartons" && "Cartons"}
+                                          {unit === "dozens" && "Dozens"}
+                                          {unit === "pairs" && "Pairs"}
+                                          {unit === "sets" && "Sets"}
+                                          {unit === "rolls" && "Rolls"}
+                                          {unit === "sheets" && "Sheets"}
+                                          {unit === "pieces" && "Pieces"}
+                                          {unit === "slices" && "Slices"}
+                                          {unit === "cups" && "Cups"}
+                                          {unit === "tablespoons" && "Tablespoons (tbsp)"}
+                                          {unit === "teaspoons" && "Teaspoons (tsp)"}
+                                          {unit === "ounces" && "Ounces (oz)"}
+                                          {unit === "pounds" && "Pounds (lbs)"}
+                                          {unit === "quarts" && "Quarts (qt)"}
+                                          {unit === "gallons" && "Gallons (gal)"}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="space-y-2">
@@ -1026,7 +1183,32 @@ export default function Dashboard() {
                               onChange={(e) => handleInputChange("price", e.target.value)}
                               required
                             />
-                            <p className="text-xs text-gray-500">Price per {formData.measuringUnit || "unit"}</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="supplier" className="text-sm font-medium">
+                              Supplier
+                            </Label>
+                            <SupplierSelect
+                              value={formData.supplier || ""}
+                              onChange={(value) => handleInputChange("supplier", value)}
+                              placeholder="Search or select supplier"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="reorder-level" className="text-sm font-medium">
+                              Reorder level
+                            </Label>
+                            <Input 
+                              id="reorder-level" 
+                              type="number" 
+                              placeholder="E.g. 10" 
+                              className="w-full"
+                              value={formData.reorderLevel}
+                              onChange={(e) => handleInputChange("reorderLevel", e.target.value)}
+                            />
+                            <p className="text-xs text-gray-500">Minimum quantity before reordering</p>
                           </div>
                           
                           <div className="space-y-2">
@@ -1057,7 +1239,14 @@ export default function Dashboard() {
                               category: formData.category,
                               measuringUnit: formData.measuringUnit,
                               quantity: parseInt(formData.quantity) || 0,
-                              status: parseInt(formData.quantity) > 0 ? "In Stock" : "Out of Stock",
+                              status: (() => {
+                                const quantity = parseInt(formData.quantity) || 0
+                                const reorderLevel = parseInt(formData.reorderLevel) || 0
+                                
+                                if (quantity === 0) return "Out of Stock"
+                                if (quantity <= reorderLevel) return "Low Stock"
+                                return "In Stock"
+                              })(),
                               lastUpdated: new Date().toISOString().split('T')[0],
                               image: "/avatars/default.jpg",
                               description: formData.description,
@@ -1077,7 +1266,8 @@ export default function Dashboard() {
                               reorderLevel: "",
                               description: "",
                               icon: "",
-                              price: ""
+                              price: "",
+                              supplier: ""
                             })
                           }}
                         >
@@ -1273,7 +1463,7 @@ export default function Dashboard() {
                               required
                             />
                           </div>
-              </div>
+                        </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="edit-stock-group" className="text-sm font-medium">
@@ -1315,8 +1505,8 @@ export default function Dashboard() {
                                 {/* Separator */}
                                 <div className="border-t border-gray-200"></div>
                                 
-                                                                  {/* Create New Group Button */}
-                                  <div className="p-3">
+                                {/* Create New Group Button */}
+                                <div className="p-3">
                                   {showCreateGroup ? (
                                     <div className="space-y-2">
                                       <Input
@@ -1375,85 +1565,87 @@ export default function Dashboard() {
                           </div>
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-measuring-unit" className="text-sm font-medium">
-                            Measuring unit *
-                          </Label>
-                          <div className="relative measuring-unit-dropdown">
-                            <Input
-                              placeholder="Search or select measuring unit"
-                              value={measuringUnitSearch}
-                              onChange={(e) => {
-                                setMeasuringUnitSearch(e.target.value)
-                                if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                              }}
-                              onFocus={() => setIsMeasuringUnitOpen(true)}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-current-stock" className="text-sm font-medium">
+                              Current stock *
+                            </Label>
+                            <Input 
+                              id="edit-current-stock" 
+                              type="number" 
+                              placeholder="E.g. 50" 
                               className="w-full"
+                              value={formData.quantity}
+                              onChange={(e) => handleInputChange("quantity", e.target.value)}
                               required
                             />
-                            
-                            {isMeasuringUnitOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                {/* Units List - Fixed height for 5 items */}
-                                <div className="max-h-[200px] overflow-y-auto">
-                                  {filteredMeasuringUnits.map((unit) => (
-                                    <button
-                                      key={unit}
-                                      type="button"
-                                      onClick={() => {
-                                        handleInputChange("measuringUnit", unit)
-                                        setMeasuringUnitSearch(unit)
-                                        setIsMeasuringUnitOpen(false)
-                                      }}
-                                      className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                    >
-                                      {unit === "kg" && "Kilograms (kg)"}
-                                      {unit === "g" && "Grams (g)"}
-                                      {unit === "L" && "Liters (L)"}
-                                      {unit === "ml" && "Milliliters (ml)"}
-                                      {unit === "pcs" && "Pieces (pcs)"}
-                                      {unit === "boxes" && "Boxes"}
-                                      {unit === "bottles" && "Bottles"}
-                                      {unit === "cans" && "Cans"}
-                                      {unit === "bags" && "Bags"}
-                                      {unit === "units" && "Units"}
-                                      {unit === "packs" && "Packs"}
-                                      {unit === "cartons" && "Cartons"}
-                                      {unit === "dozens" && "Dozens"}
-                                      {unit === "pairs" && "Pairs"}
-                                      {unit === "sets" && "Sets"}
-                                      {unit === "rolls" && "Rolls"}
-                                      {unit === "sheets" && "Sheets"}
-                                      {unit === "pieces" && "Pieces"}
-                                      {unit === "slices" && "Slices"}
-                                      {unit === "cups" && "Cups"}
-                                      {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                      {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                      {unit === "ounces" && "Ounces (oz)"}
-                                      {unit === "pounds" && "Pounds (lbs)"}
-                                      {unit === "quarts" && "Quarts (qt)"}
-                                      {unit === "gallons" && "Gallons (gal)"}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-current-stock" className="text-sm font-medium">
-                            Current stock *
-                          </Label>
-                          <Input 
-                            id="edit-current-stock" 
-                            type="number" 
-                            placeholder="E.g. 50" 
-                            className="w-full"
-                            value={formData.quantity}
-                            onChange={(e) => handleInputChange("quantity", e.target.value)}
-                            required
-                          />
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-measuring-unit" className="text-sm font-medium">
+                              Measuring unit *
+                            </Label>
+                            <div className="relative measuring-unit-dropdown">
+                              <Input
+                                placeholder="Search or select measuring unit"
+                                value={measuringUnitSearch}
+                                onChange={(e) => {
+                                  setMeasuringUnitSearch(e.target.value)
+                                  if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
+                                }}
+                                onFocus={() => setIsMeasuringUnitOpen(true)}
+                                className="w-full"
+                                required
+                              />
+                              
+                              {isMeasuringUnitOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                                  {/* Units List - Fixed height for 5 items */}
+                                  <div className="max-h-[200px] overflow-y-auto">
+                                    {filteredMeasuringUnits.map((unit) => (
+                                      <button
+                                        key={unit}
+                                        type="button"
+                                        onClick={() => {
+                                          handleInputChange("measuringUnit", unit)
+                                          setMeasuringUnitSearch(unit)
+                                          setIsMeasuringUnitOpen(false)
+                                        }}
+                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                                      >
+                                        {unit === "kg" && "Kilograms (kg)"}
+                                        {unit === "g" && "Grams (g)"}
+                                        {unit === "L" && "Liters (L)"}
+                                        {unit === "ml" && "Milliliters (ml)"}
+                                        {unit === "pcs" && "Pieces (pcs)"}
+                                        {unit === "boxes" && "Boxes"}
+                                        {unit === "bottles" && "Bottles"}
+                                        {unit === "cans" && "Cans"}
+                                        {unit === "bags" && "Bags"}
+                                        {unit === "units" && "Units"}
+                                        {unit === "packs" && "Packs"}
+                                        {unit === "cartons" && "Cartons"}
+                                        {unit === "dozens" && "Dozens"}
+                                        {unit === "pairs" && "Pairs"}
+                                        {unit === "sets" && "Sets"}
+                                        {unit === "rolls" && "Rolls"}
+                                        {unit === "sheets" && "Sheets"}
+                                        {unit === "pieces" && "Pieces"}
+                                        {unit === "slices" && "Slices"}
+                                        {unit === "cups" && "Cups"}
+                                        {unit === "tablespoons" && "Tablespoons (tbsp)"}
+                                        {unit === "teaspoons" && "Teaspoons (tsp)"}
+                                        {unit === "ounces" && "Ounces (oz)"}
+                                        {unit === "pounds" && "Pounds (lbs)"}
+                                        {unit === "quarts" && "Quarts (qt)"}
+                                        {unit === "gallons" && "Gallons (gal)"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         
                         <div className="space-y-2">
@@ -1485,7 +1677,17 @@ export default function Dashboard() {
                             onChange={(e) => handleInputChange("price", e.target.value)}
                             required
                           />
-                          <p className="text-xs text-gray-500">Price per {formData.measuringUnit || "unit"}</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-supplier" className="text-sm font-medium">
+                            Supplier
+                          </Label>
+                          <SupplierSelect
+                            value={formData.supplier || ""}
+                            onChange={(value) => handleInputChange("supplier", value)}
+                            placeholder="Search or select supplier"
+                          />
                         </div>
                         
                         <div className="space-y-2">

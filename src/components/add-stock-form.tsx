@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Drawer, DrawerFooter } from "@/components/ui/drawer"
+import { SupplierSelect } from "@/components/ui/supplier-select"
 
 interface AddStockFormProps {
   itemName: string
@@ -97,19 +97,11 @@ function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: AddStockFo
           <Label htmlFor="supplierName" className="text-sm font-medium">
             Supplier name
           </Label>
-          <Select
+          <SupplierSelect
             value={formData.supplierName}
-            onValueChange={(value) => handleInputChange("supplierName", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a supplier or enter name" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ram-bahadur">Ram Bahadur Phuyal</SelectItem>
-              <SelectItem value="sipnskip">SipnSkip Restaurant</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={(value) => handleInputChange("supplierName", value)}
+            placeholder="Search or select supplier"
+          />
         </div>
 
         {/* Date and Time */}

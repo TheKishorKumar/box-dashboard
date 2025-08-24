@@ -43,9 +43,10 @@ interface StockItem {
 
 interface StockTransaction {
   id: number
+  stockItemId: number
   date: string
   time: string
-  type: "Stock in" | "Stock out"
+  type: "Stock in" | "Stock out" | "Initial stock"
   quantity: number
   measuringUnit: string
   party: string
@@ -109,6 +110,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     // Add a new transaction to the list
     const newTransaction = {
       id: Date.now() + Math.floor(Math.random() * 1000),
+      stockItemId: parseInt(id),
       date: new Date(data.dateTime).toLocaleDateString('en-US', { 
         day: 'numeric', 
         month: 'long', 
@@ -128,6 +130,28 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     }
     
     setTransactions(prev => [newTransaction, ...prev])
+    
+    // Save to localStorage
+    const savedTransactions = localStorage.getItem('stockTransactions')
+    const allTransactions = savedTransactions ? JSON.parse(savedTransactions) : []
+    localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...allTransactions]))
+    
+    // Update stock item quantity in main page
+    if (stockItem) {
+      const updatedQuantity = stockItem.quantity + data.quantity
+      const updatedStockItem = { ...stockItem, quantity: updatedQuantity }
+      
+      // Update stock items in localStorage
+      const savedItems = localStorage.getItem('stockItems')
+      if (savedItems) {
+        const items = JSON.parse(savedItems)
+        const updatedItems = items.map((item: any) => 
+          item.id === stockItem.id ? updatedStockItem : item
+        )
+        localStorage.setItem('stockItems', JSON.stringify(updatedItems))
+      }
+    }
+    
     setShowAddStockForm(false)
   }
 
@@ -176,6 +200,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     // Add a new transaction to the list
     const newTransaction = {
       id: Date.now() + Math.floor(Math.random() * 1000),
+      stockItemId: parseInt(id),
       date: new Date(data.dateTime).toLocaleDateString('en-US', { 
         day: 'numeric', 
         month: 'long', 
@@ -195,6 +220,28 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     }
     
     setTransactions(prev => [newTransaction, ...prev])
+    
+    // Save to localStorage
+    const savedTransactions = localStorage.getItem('stockTransactions')
+    const allTransactions = savedTransactions ? JSON.parse(savedTransactions) : []
+    localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...allTransactions]))
+    
+    // Update stock item quantity in main page
+    if (stockItem) {
+      const updatedQuantity = Math.max(0, stockItem.quantity - data.quantity)
+      const updatedStockItem = { ...stockItem, quantity: updatedQuantity }
+      
+      // Update stock items in localStorage
+      const savedItems = localStorage.getItem('stockItems')
+      if (savedItems) {
+        const items = JSON.parse(savedItems)
+        const updatedItems = items.map((item: any) => 
+          item.id === stockItem.id ? updatedStockItem : item
+        )
+        localStorage.setItem('stockItems', JSON.stringify(updatedItems))
+      }
+    }
+    
     setShowStockOutForm(false)
   }
 
@@ -214,6 +261,39 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   const confirmDeleteRecord = () => {
     if (deletingTransaction) {
       setTransactions(prev => prev.filter(t => t.id !== deletingTransaction.id))
+      
+      // Update localStorage
+      const savedTransactions = localStorage.getItem('stockTransactions')
+      const allTransactions = savedTransactions ? JSON.parse(savedTransactions) : []
+      const updatedTransactions = allTransactions.filter((t: StockTransaction) => t.id !== deletingTransaction.id)
+      localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+      
+      // Update stock item quantity in main page based on remaining transactions
+      if (stockItem) {
+        const itemTransactions = updatedTransactions.filter((t: StockTransaction) => t.stockItemId === stockItem.id)
+        let totalQuantity = 0
+        
+        itemTransactions.forEach((transaction: StockTransaction) => {
+          if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+            totalQuantity += transaction.quantity
+          } else if (transaction.type === "Stock out") {
+            totalQuantity -= transaction.quantity
+          }
+        })
+        
+        const updatedStockItem = { ...stockItem, quantity: Math.max(0, totalQuantity) }
+        
+        // Update stock items in localStorage
+        const savedItems = localStorage.getItem('stockItems')
+        if (savedItems) {
+          const items = JSON.parse(savedItems)
+          const updatedItems = items.map((item: any) => 
+            item.id === stockItem.id ? updatedStockItem : item
+          )
+          localStorage.setItem('stockItems', JSON.stringify(updatedItems))
+        }
+      }
+      
       setDeletingTransaction(null)
       setShowDeleteConfirmation(false)
     }
@@ -236,19 +316,54 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
       })
       
       // Update the transaction
+      const updatedTransaction = {
+        ...editingTransaction,
+        quantity: data.quantity,
+        party: data.party,
+        stockValue: data.quantity * data.perUnitPrice,
+        notes: data.notes,
+        date: date,
+        time: time
+      }
+      
       setTransactions(prev => prev.map(t => 
-        t.id === editingTransaction.id 
-          ? { 
-              ...t, 
-              quantity: data.quantity,
-              party: data.party,
-              stockValue: data.quantity * data.perUnitPrice,
-              notes: data.notes,
-              date: date,
-              time: time
-            }
-          : t
+        t.id === editingTransaction.id ? updatedTransaction : t
       ))
+      
+      // Update localStorage
+      const savedTransactions = localStorage.getItem('stockTransactions')
+      const allTransactions = savedTransactions ? JSON.parse(savedTransactions) : []
+      const updatedAllTransactions = allTransactions.map((t: StockTransaction) => 
+        t.id === editingTransaction.id ? updatedTransaction : t
+      )
+      localStorage.setItem('stockTransactions', JSON.stringify(updatedAllTransactions))
+      
+      // Update stock item quantity in main page based on all transactions
+      if (stockItem) {
+        const itemTransactions = updatedAllTransactions.filter((t: StockTransaction) => t.stockItemId === stockItem.id)
+        let totalQuantity = 0
+        
+        itemTransactions.forEach((transaction: StockTransaction) => {
+          if (transaction.type === "Stock in" || transaction.type === "Initial stock") {
+            totalQuantity += transaction.quantity
+          } else if (transaction.type === "Stock out") {
+            totalQuantity -= transaction.quantity
+          }
+        })
+        
+        const updatedStockItem = { ...stockItem, quantity: Math.max(0, totalQuantity) }
+        
+        // Update stock items in localStorage
+        const savedItems = localStorage.getItem('stockItems')
+        if (savedItems) {
+          const items = JSON.parse(savedItems)
+          const updatedItems = items.map((item: any) => 
+            item.id === stockItem.id ? updatedStockItem : item
+          )
+          localStorage.setItem('stockItems', JSON.stringify(updatedItems))
+        }
+      }
+      
       setEditingTransaction(null)
       setShowEditRecordForm(false)
     }
@@ -263,32 +378,44 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
       setStockItem(item || null)
     }
 
-    // Load mock transaction data
-    const mockTransactions: StockTransaction[] = [
-      {
-        id: 1,
-        date: "3 June 2025",
-        time: "2:44 PM",
-        type: "Stock in",
-        quantity: 100,
-        measuringUnit: "Kg",
-        party: "Ram Bahadur Phuyal",
-        stockValue: 12000,
-        notes: "-"
-      },
-      {
-        id: 2,
-        date: "2 June 2025",
-        time: "11:53 AM",
-        type: "Stock out",
-        quantity: 100,
-        measuringUnit: "Kg",
-        party: "SipnSkip Restaurant",
-        stockValue: 10000,
-        notes: "Wasted"
-      }
-    ]
-    setTransactions(mockTransactions)
+    // Load transactions from localStorage
+    const savedTransactions = localStorage.getItem('stockTransactions')
+    if (savedTransactions) {
+      const allTransactions = JSON.parse(savedTransactions)
+      const itemTransactions = allTransactions.filter((transaction: StockTransaction) => 
+        transaction.stockItemId === parseInt(id)
+      )
+      setTransactions(itemTransactions)
+    } else {
+      // Load mock transaction data if no saved transactions exist
+      const mockTransactions: StockTransaction[] = [
+        {
+          id: 1,
+          stockItemId: parseInt(id),
+          date: "3 June 2025",
+          time: "2:44 PM",
+          type: "Stock in",
+          quantity: 100,
+          measuringUnit: "Kg",
+          party: "Ram Bahadur Phuyal",
+          stockValue: 12000,
+          notes: "-"
+        },
+        {
+          id: 2,
+          stockItemId: parseInt(id),
+          date: "2 June 2025",
+          time: "11:53 AM",
+          type: "Stock out",
+          quantity: 100,
+          measuringUnit: "Kg",
+          party: "SipnSkip Restaurant",
+          stockValue: 10000,
+          notes: "Wasted"
+        }
+      ]
+      setTransactions(mockTransactions)
+    }
     setIsHydrated(true)
   }, [id])
 
@@ -331,7 +458,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
             <Menu className="h-6 w-6" />
           </button>
           {!isSidebarCollapsed && (
-            <img src="/box-logo.svg" alt="BOX by Bottle" className="h-6 w-auto" />
+            <img src="/box-logo.svg" alt="Box" className="h-6 w-auto" />
           )}
         </div>
 
@@ -457,6 +584,8 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
                        className={
                          transaction.type === "Stock in" 
                            ? "bg-green-100 text-green-800 hover:bg-green-100"
+                           : transaction.type === "Initial stock"
+                           ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
                            : "bg-red-100 text-red-800 hover:bg-red-100"
                        }
                      >

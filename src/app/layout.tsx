@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BOX by Bottle - Inventory Management",
-  description: "Manage your restaurant inventory with BOX by Bottle",
+  title: "Box - Inventory Management",
+  description: "Manage your restaurant inventory with Box",
   icons: {
     icon: '/Favicon.svg',
   },
