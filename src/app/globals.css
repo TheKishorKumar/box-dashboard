@@ -120,3 +120,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom styles for top navigation tabs */
+.tabs-trigger[data-state="active"] {
+  color: #D8550D !important;
+  border-bottom-color: #D8550D !important;
+  border-bottom-width: 2px !important;
+}
+
+.tabs-trigger[data-state="active"]:hover {
+  color: #A8420A !important;
+  border-bottom-color: #A8420A !important;
+}

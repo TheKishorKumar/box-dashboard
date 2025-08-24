@@ -23,6 +23,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AddStockForm } from "@/components/add-stock-form"
+import { StockOutForm } from "@/components/stock-out-form"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -55,10 +57,8 @@ export default function Dashboard() {
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = `
-      .tabs-trigger[data-state="active"] {
-        color: #D8550D !important;
-        border-bottom-color: #D8550D !important;
-      }
+      .brand-orange { background-color: #D8550D; }
+      .brand-orange:hover { background-color: #A8420A; }
     `
     document.head.appendChild(style)
     return () => {
@@ -67,6 +67,12 @@ export default function Dashboard() {
       }
     }
   }, [])
+
+  // Generate unique ID function
+  const generateUniqueId = () => {
+    return Date.now() + Math.floor(Math.random() * 1000)
+  }
+
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
@@ -207,6 +213,13 @@ export default function Dashboard() {
   const [editingItem, setEditingItem] = useState<StockItem | null>(null)
   const [toasts, setToasts] = useState<Array<{id: number, type: string, message: string, action: {label: string, action: () => void} | null}>>([])
   
+  // State for stock management
+  const [showAddStockForm, setShowAddStockForm] = useState(false)
+  const [showStockOutForm, setShowStockOutForm] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<StockItem | null>(null)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [deletingItem, setDeletingItem] = useState<StockItem | null>(null)
+  
   // State for sidebar - initialize with localStorage value if available
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -247,6 +260,50 @@ export default function Dashboard() {
     setMeasuringUnitSearch(item.measuringUnit) // Set the search field to show current measuring unit
     setIsEditSheetOpen(true)
   }
+
+  // Function to handle stock in action
+  const handleStockIn = (item: StockItem) => {
+    setSelectedItem(item)
+    setShowAddStockForm(true)
+  }
+
+  // Function to handle stock out action
+  const handleStockOutAction = (item: StockItem) => {
+    setSelectedItem(item)
+    setShowStockOutForm(true)
+  }
+
+  // Function to handle add stock form submission
+  const handleAddStock = (data: any) => {
+    if (selectedItem) {
+      // Update the stock item quantity
+      const updatedItems = stockItems.map(item => 
+        item.id === selectedItem.id 
+          ? { ...item, quantity: item.quantity + data.quantity }
+          : item
+      )
+      updateStockItems(updatedItems)
+      addToast('success', `Added ${data.quantity} ${selectedItem.measuringUnit} to ${selectedItem.name}`)
+      setShowAddStockForm(false)
+      setSelectedItem(null)
+    }
+  }
+
+  // Function to handle stock out form submission
+  const handleStockOutSubmit = (data: any) => {
+    if (selectedItem) {
+      // Update the stock item quantity
+      const updatedItems = stockItems.map(item => 
+        item.id === selectedItem.id 
+          ? { ...item, quantity: Math.max(0, item.quantity - data.quantity) }
+          : item
+      )
+      updateStockItems(updatedItems)
+      addToast('success', `Deducted ${data.quantity} ${selectedItem.measuringUnit} from ${selectedItem.name}`)
+      setShowStockOutForm(false)
+      setSelectedItem(null)
+    }
+  }
   const [isIconDropdownOpen, setIsIconDropdownOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -275,7 +332,7 @@ export default function Dashboard() {
     e.preventDefault()
     
     const newItem = {
-      id: Date.now(),
+      id: generateUniqueId(),
       name: formData.name,
       category: formData.category,
       measuringUnit: formData.measuringUnit,
@@ -363,7 +420,7 @@ export default function Dashboard() {
 
   // Toast functions
   const addToast = (type: string, message: string, action: {label: string, action: () => void} | null = null) => {
-    const id = Date.now()
+    const id = generateUniqueId()
     const newToast = { id, type, message, action }
     setToasts(prev => [...prev, newToast])
     
@@ -385,11 +442,20 @@ export default function Dashboard() {
   // Handle delete item
   const handleDelete = (id: number) => {
     const deletedItem = stockItems.find(item => item.id === id)
-    updateStockItems(stockItems.filter(item => item.id !== id))
-    addToast('success', 'Stock item deleted successfully', {
-      label: 'Undo',
-      action: () => deletedItem && handleUndoDelete(deletedItem)
-    })
+    if (deletedItem) {
+      setDeletingItem(deletedItem)
+      setShowDeleteConfirmation(true)
+    }
+  }
+
+  // Confirm delete item
+  const confirmDeleteItem = () => {
+    if (deletingItem) {
+      updateStockItems(stockItems.filter(item => item.id !== deletingItem.id))
+      addToast('success', 'Stock item deleted successfully')
+      setDeletingItem(null)
+      setShowDeleteConfirmation(false)
+    }
   }
 
   // Handle icon selection
@@ -502,7 +568,6 @@ export default function Dashboard() {
                   '--tw-text-opacity': '1',
                   '--tw-border-opacity': '1'
                 } as React.CSSProperties}
-                data-state="active"
               >
                 Stock item
               </TabsTrigger>
@@ -987,7 +1052,7 @@ export default function Dashboard() {
                           onClick={() => {
                             // Simulate form submission for "Add another" functionality
                             const newItem = {
-                              id: Date.now(),
+                              id: generateUniqueId(),
                               name: formData.name,
                               category: formData.category,
                               measuringUnit: formData.measuringUnit,
@@ -1573,15 +1638,15 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStockIn(item); }}>
                                   <Plus className="mr-2 h-4 w-4" />
                                   Stock in
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStockOutAction(item); }}>
                                   <Minus className="mr-2 h-4 w-4" />
                                   Stock out
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditStockItem(item)}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditStockItem(item); }}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit stock item
                                 </DropdownMenuItem>
@@ -1594,7 +1659,7 @@ export default function Dashboard() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-red-600"
-                                  onClick={() => handleDelete(item.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete stock item
@@ -1648,6 +1713,75 @@ export default function Dashboard() {
           </Tabs>
         </div>
       </div>
+
+      {/* Add Stock Form Modal */}
+      {showAddStockForm && selectedItem && (
+        <AddStockForm
+          itemName={selectedItem.name}
+          measuringUnit={selectedItem.measuringUnit}
+          onClose={() => setShowAddStockForm(false)}
+          onSubmit={handleAddStock}
+        />
+      )}
+
+      {/* Stock Out Form Modal */}
+      {showStockOutForm && selectedItem && (
+        <StockOutForm
+          itemName={selectedItem.name}
+          measuringUnit={selectedItem.measuringUnit}
+          currentStock={selectedItem.quantity}
+          onClose={() => setShowStockOutForm(false)}
+          onSubmit={handleStockOutSubmit}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && deletingItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close Icon */}
+            <button 
+              onClick={() => setShowDeleteConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Icon */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Delete Stock Item?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will permanently remove "{deletingItem.name}" from your inventory. This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteConfirmation(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteItem}
+                className="px-6"
+              >
+                Delete Item
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications */}
       <div className="fixed top-4 right-4 z-50 space-y-2">

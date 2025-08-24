@@ -142,3 +142,5 @@ export function AddStockForm({ itemName, measuringUnit, onClose, onSubmit }: Add
     </Drawer>
   )
 }
+
+export { AddStockForm }

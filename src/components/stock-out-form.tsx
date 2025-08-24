@@ -73,7 +73,7 @@ export function StockOutForm({ itemName, measuringUnit, currentStock, onClose, o
   const handleCreateSupplier = () => {
     if (newSupplierName.trim()) {
       const newSupplier = {
-        id: `supplier-${Date.now()}`,
+        id: `supplier-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: newSupplierName.trim()
       }
       setSuppliers(prev => [...prev, newSupplier])

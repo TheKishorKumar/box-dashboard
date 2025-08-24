@@ -77,7 +77,7 @@ export function EditRecordForm({ transaction, onClose, onSubmit }: EditRecordFor
   const handleCreateSupplier = () => {
     if (newSupplierName.trim()) {
       const newSupplier = {
-        id: `supplier-${Date.now()}`,
+        id: `supplier-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: newSupplierName.trim()
       }
       setSuppliers(prev => [...prev, newSupplier])
