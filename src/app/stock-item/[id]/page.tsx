@@ -65,6 +65,18 @@ interface AddStockData {
   notes: string
 }
 
+interface Supplier {
+  id: number
+  legalName: string
+  phoneNumber: string
+  taxNumber: string
+  email: string
+  address: string
+  contactPerson: string
+  createdAt: string
+  lastUpdated: string
+}
+
 interface StockOutData {
   perUnitPrice: number
   quantity: number
@@ -86,6 +98,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<StockTransaction | null>(null)
   const [deletingTransaction, setDeletingTransaction] = useState<StockTransaction | null>(null)
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   
   // State for sidebar - initialize with localStorage value if available
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -302,6 +315,22 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
     }
   }
 
+  // Handle adding supplier from form
+  const handleAddSupplierFromSelect = (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'lastUpdated'>) => {
+    const newSupplier: Supplier = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      ...supplierData,
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
+    }
+    setSuppliers(prev => [...prev, newSupplier])
+    
+    // Save to localStorage
+    const savedSuppliers = localStorage.getItem('suppliers')
+    const allSuppliers = savedSuppliers ? JSON.parse(savedSuppliers) : []
+    localStorage.setItem('suppliers', JSON.stringify([...allSuppliers, newSupplier]))
+  }
+
   // Handle edit record form submission
   const handleEditRecordSubmit = (data: { quantity: number; party: string; perUnitPrice: number; notes: string; dateTime: string }) => {
     if (editingTransaction) {
@@ -379,6 +408,12 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
       const items = JSON.parse(savedItems)
       const item = items.find((item: StockItem) => item.id === parseInt(id))
       setStockItem(item || null)
+    }
+
+    // Load suppliers from localStorage
+    const savedSuppliers = localStorage.getItem('suppliers')
+    if (savedSuppliers) {
+      setSuppliers(JSON.parse(savedSuppliers))
     }
 
     // Load transactions from localStorage
@@ -638,6 +673,8 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
         <AddStockForm
           itemName={stockItem.name}
           measuringUnit={stockItem.measuringUnit}
+          suppliers={suppliers}
+          onAddSupplier={handleAddSupplierFromSelect}
           onClose={() => setShowAddStockForm(false)}
           onSubmit={handleAddStock}
         />
@@ -649,6 +686,8 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
           itemName={stockItem.name}
           measuringUnit={stockItem.measuringUnit}
           currentStock={stockItem.quantity}
+          suppliers={suppliers}
+          onAddSupplier={handleAddSupplierFromSelect}
           onClose={() => setShowStockOutForm(false)}
           onSubmit={handleStockOutSubmit}
         />
