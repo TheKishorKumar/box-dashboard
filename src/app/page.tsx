@@ -720,8 +720,35 @@ export default function Dashboard() {
                           variant="outline" 
                           className="flex-1"
                           onClick={() => {
-                            handleSubmit(new Event('submit') as any)
-                            setIsSheetOpen(true)
+                            // Simulate form submission for "Add another" functionality
+                            const newItem = {
+                              id: Date.now(),
+                              name: formData.name,
+                              category: formData.category,
+                              measuringUnit: formData.measuringUnit,
+                              quantity: parseInt(formData.quantity) || 0,
+                              status: parseInt(formData.quantity) > 0 ? "In Stock" : "Out of Stock",
+                              lastUpdated: new Date().toISOString().split('T')[0],
+                              image: "/avatars/default.jpg",
+                              description: formData.description,
+                              reorderLevel: parseInt(formData.reorderLevel) || 0,
+                              icon: formData.icon,
+                              price: parseFloat(formData.price) || 0
+                            }
+                            updateStockItems([...stockItems, newItem])
+                            addToast('success', 'Stock item added successfully')
+                            
+                            // Reset form
+                            setFormData({
+                              name: "",
+                              category: "",
+                              measuringUnit: "",
+                              quantity: "",
+                              reorderLevel: "",
+                              description: "",
+                              icon: "",
+                              price: ""
+                            })
                           }}
                         >
                           Add another
