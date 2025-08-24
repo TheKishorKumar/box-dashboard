@@ -35,6 +35,14 @@ interface MeasuringUnit {
   createdAt: string
 }
 
+interface StockGroup {
+  id: number
+  name: string
+  description: string
+  itemCount: number
+  createdAt: string
+}
+
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -245,6 +253,15 @@ export default function Dashboard() {
     } else {
       // Initialize with default measuring units if none exist
       setMeasuringUnitsData(defaultMeasuringUnits)
+    }
+    
+    // Load stock groups from localStorage
+    const savedStockGroups = localStorage.getItem('stockGroupsData')
+    if (savedStockGroups) {
+      setStockGroupsData(JSON.parse(savedStockGroups))
+    } else {
+      // Initialize with default stock groups if none exist
+      setStockGroupsData(defaultStockGroups)
     }
     
     setIsHydrated(true)
@@ -695,6 +712,16 @@ export default function Dashboard() {
   const [showDeleteMeasuringUnitConfirmation, setShowDeleteMeasuringUnitConfirmation] = useState(false)
   const [deletingMeasuringUnit, setDeletingMeasuringUnit] = useState<MeasuringUnit | null>(null)
   
+  // State for stock groups management
+  const [stockGroupsData, setStockGroupsData] = useState<StockGroup[]>([])
+  const [showCreateStockGroup, setShowCreateStockGroup] = useState(false)
+  const [newStockGroupName, setNewStockGroupName] = useState("")
+  const [newStockGroupDescription, setNewStockGroupDescription] = useState("")
+  const [stockGroupSearchData, setStockGroupSearchData] = useState("")
+  const [editingStockGroup, setEditingStockGroup] = useState<StockGroup | null>(null)
+  const [showDeleteStockGroupConfirmation, setShowDeleteStockGroupConfirmation] = useState(false)
+  const [deletingStockGroup, setDeletingStockGroup] = useState<StockGroup | null>(null)
+  
   // Default measuring units
   const defaultMeasuringUnits = [
     { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
@@ -724,11 +751,42 @@ export default function Dashboard() {
     { id: 25, name: "Gallons", abbreviation: "gal", createdAt: new Date().toISOString() }
   ]
 
+  // Default stock groups
+  const defaultStockGroups = [
+    { id: 1, name: "Groceries", description: "Basic grocery items and staples", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 2, name: "Vegetables", description: "Fresh vegetables and produce", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 3, name: "Meat", description: "Fresh meat and poultry products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 4, name: "Dairy", description: "Dairy products and milk-based items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 5, name: "Beverages", description: "Drinks and beverage products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 6, name: "Pantry", description: "Pantry staples and dry goods", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 7, name: "Oils", description: "Cooking oils and fats", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 8, name: "Fruits", description: "Fresh fruits and dried fruits", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 9, name: "Grains", description: "Rice, wheat, and grain products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 10, name: "Spices", description: "Spices, herbs, and seasonings", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 11, name: "Condiments", description: "Sauces, dressings, and condiments", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 12, name: "Frozen Foods", description: "Frozen food items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 13, name: "Snacks", description: "Snack foods and treats", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 14, name: "Bakery", description: "Bread, pastries, and baked goods", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 15, name: "Seafood", description: "Fish and seafood products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 16, name: "Poultry", description: "Chicken, turkey, and other poultry", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 17, name: "Cleaning Supplies", description: "Cleaning and maintenance supplies", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 18, name: "Paper Products", description: "Paper towels, napkins, and disposables", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 19, name: "Alcoholic Beverages", description: "Beer, wine, and spirits", itemCount: 0, createdAt: new Date().toISOString() }
+  ]
+
   // Custom setter that saves measuring units to localStorage
   const updateMeasuringUnits = (newUnits: MeasuringUnit[]) => {
     setMeasuringUnitsData(newUnits)
     if (typeof window !== 'undefined') {
       localStorage.setItem('measuringUnits', JSON.stringify(newUnits))
+    }
+  }
+
+  // Custom setter that saves stock groups to localStorage
+  const updateStockGroupsData = (newGroups: StockGroup[]) => {
+    setStockGroupsData(newGroups)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockGroupsData', JSON.stringify(newGroups))
     }
   }
 
@@ -746,6 +804,24 @@ export default function Dashboard() {
       setNewMeasuringUnitAbbr("")
       setShowCreateMeasuringUnit(false)
       addToast('success', `Measuring unit "${newUnit.name}" created successfully`)
+    }
+  }
+
+  // Handle creating a new stock group
+  const handleCreateStockGroup = () => {
+    if (newStockGroupName.trim()) {
+      const newGroup: StockGroup = {
+        id: generateUniqueId(),
+        name: newStockGroupName.trim(),
+        description: newStockGroupDescription.trim(),
+        itemCount: 0,
+        createdAt: new Date().toISOString()
+      }
+      updateStockGroupsData([...stockGroupsData, newGroup])
+      setNewStockGroupName("")
+      setNewStockGroupDescription("")
+      setShowCreateStockGroup(false)
+      addToast('success', `Stock group "${newGroup.name}" created successfully`)
     }
   }
 
@@ -790,11 +866,64 @@ export default function Dashboard() {
     }
   }
 
+  // Handle editing stock group
+  const handleEditStockGroup = (group: StockGroup) => {
+    setEditingStockGroup(group)
+    setNewStockGroupName(group.name)
+    setNewStockGroupDescription(group.description)
+    setShowCreateStockGroup(true)
+  }
+
+  // Handle updating stock group
+  const handleUpdateStockGroup = () => {
+    if (editingStockGroup && newStockGroupName.trim()) {
+      const updatedGroup: StockGroup = {
+        ...editingStockGroup,
+        name: newStockGroupName.trim(),
+        description: newStockGroupDescription.trim()
+      }
+      updateStockGroupsData(stockGroupsData.map(group => group.id === editingStockGroup.id ? updatedGroup : group))
+      setNewStockGroupName("")
+      setNewStockGroupDescription("")
+      setEditingStockGroup(null)
+      setShowCreateStockGroup(false)
+      addToast('success', `Stock group "${updatedGroup.name}" updated successfully`)
+    }
+  }
+
+  // Handle delete stock group
+  const handleDeleteStockGroup = (group: StockGroup) => {
+    setDeletingStockGroup(group)
+    setShowDeleteStockGroupConfirmation(true)
+  }
+
+  // Confirm delete stock group
+  const confirmDeleteStockGroup = () => {
+    if (deletingStockGroup) {
+      updateStockGroupsData(stockGroupsData.filter(group => group.id !== deletingStockGroup.id))
+      addToast('success', `Stock group "${deletingStockGroup.name}" deleted successfully`)
+      setDeletingStockGroup(null)
+      setShowDeleteStockGroupConfirmation(false)
+    }
+  }
+
   // Filter measuring units based on search
   const filteredMeasuringUnitsData = measuringUnitsData.filter(unit =>
     unit.name.toLowerCase().includes(measuringUnitSearchData.toLowerCase()) ||
     unit.abbreviation.toLowerCase().includes(measuringUnitSearchData.toLowerCase())
   )
+
+  // Filter stock groups based on search
+  const filteredStockGroupsData = stockGroupsData.filter(group =>
+    group.name.toLowerCase().includes(stockGroupSearchData.toLowerCase()) ||
+    group.description.toLowerCase().includes(stockGroupSearchData.toLowerCase())
+  )
+
+  // Calculate item counts for each stock group
+  const stockGroupsWithCounts = filteredStockGroupsData.map(group => ({
+    ...group,
+    itemCount: stockItems.filter(item => item.category === group.name).length
+  }))
 
   return (
     <div className="min-h-screen bg-white flex">
@@ -2146,9 +2275,131 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="stock-group" className="space-y-6">
-              <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Stock Groups</h2>
-                <p className="text-gray-600 mt-2">Organize your inventory into logical groups.</p>
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Stock Groups</h1>
+                  <p className="text-gray-600 mt-1">
+                    Organize your inventory into logical groups for better management.
+                  </p>
+                </div>
+                {stockGroupsData.length > 0 && (
+                  <Button 
+                    onClick={() => setShowCreateStockGroup(true)}
+                    className="text-white" 
+                    style={{ backgroundColor: '#D8550D' }} 
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Stock Group
+                  </Button>
+                )}
+              </div>
+
+              {/* Search */}
+              {stockGroupsData.length > 0 && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                      placeholder="Search stock groups" 
+                      className="pl-10 bg-white border-gray-200"
+                      value={stockGroupSearchData}
+                      onChange={(e) => setStockGroupSearchData(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Stock Groups Table */}
+              <div>
+                {!isHydrated ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : stockGroupsData.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No stock groups added yet</h3>
+                    <p className="text-gray-600 mb-6">Start organizing your inventory by adding your first stock group.</p>
+                    <Button 
+                      onClick={() => setShowCreateStockGroup(true)}
+                      className="text-white"
+                      style={{ backgroundColor: '#D8550D' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Stock Group
+                    </Button>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Group Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stockGroupsWithCounts.map((group) => (
+                        <TableRow key={group.id} className="hover:bg-gray-50 transition-colors">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-600">
+                                  {group.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="font-medium">{group.name}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-gray-600">{group.description || "No description"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{group.itemCount} items</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditStockGroup(group)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit stock group
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteStockGroup(group)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete stock group
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </TabsContent>
 
@@ -2293,6 +2544,117 @@ export default function Dashboard() {
         </SheetContent>
       </Sheet>
 
+      {/* Stock Group Creation/Edit Sheet */}
+      <Sheet open={showCreateStockGroup} onOpenChange={(open) => {
+        setShowCreateStockGroup(open)
+        if (!open) {
+          // Reset edit state when sheet is closed
+          setEditingStockGroup(null)
+          setNewStockGroupName("")
+          setNewStockGroupDescription("")
+        }
+      }}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <form onSubmit={(e) => { 
+            e.preventDefault(); 
+            if (editingStockGroup) {
+              handleUpdateStockGroup();
+            } else {
+              handleCreateStockGroup();
+            }
+          }} className="flex flex-col h-full">
+            <div className="px-6 flex-1">
+              <SheetHeader className="pl-0">
+                <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                  {editingStockGroup ? "Edit Stock Group" : "New Stock Group"}
+                </SheetTitle>
+                <SheetDescription>
+                  {editingStockGroup ? "Update the stock group details." : "Add a new stock group to organize your inventory."}
+                </SheetDescription>
+              </SheetHeader>
+              
+              {/* Separator line */}
+              <div className="border-b border-gray-200 mb-6"></div>
+              
+              <div className="space-y-6 mt-6">
+                {/* Group Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="group-name" className="text-sm font-medium">
+                    Group Name *
+                  </Label>
+                  <Input
+                    id="group-name"
+                    placeholder="E.g. Groceries, Vegetables, Meat"
+                    value={newStockGroupName}
+                    onChange={(e) => setNewStockGroupName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="group-description" className="text-sm font-medium">
+                    Description
+                  </Label>
+                  <Textarea
+                    id="group-description"
+                    placeholder="Brief description of what this group contains"
+                    value={newStockGroupDescription}
+                    onChange={(e) => setNewStockGroupDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  if (editingStockGroup) {
+                    // Cancel edit - close form and reset state
+                    setShowCreateStockGroup(false)
+                    setEditingStockGroup(null)
+                    setNewStockGroupName("")
+                    setNewStockGroupDescription("")
+                  } else {
+                    // Add another - create group and reset form
+                    if (newStockGroupName.trim()) {
+                      const newGroup: StockGroup = {
+                        id: generateUniqueId(),
+                        name: newStockGroupName.trim(),
+                        description: newStockGroupDescription.trim(),
+                        itemCount: 0,
+                        createdAt: new Date().toISOString()
+                      }
+                      updateStockGroupsData([...stockGroupsData, newGroup])
+                      addToast('success', `Stock group "${newGroup.name}" created successfully`)
+                      
+                      // Reset form
+                      setNewStockGroupName("")
+                      setNewStockGroupDescription("")
+                    }
+                  }
+                }}
+              >
+                {editingStockGroup ? "Cancel" : "Add another"}
+              </Button>
+              <Button 
+                type="submit" 
+                className="text-white flex-1"
+                style={{ backgroundColor: '#D8550D' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+              >
+                {editingStockGroup ? "Update Group" : "Create Group"}
+              </Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+
       {/* Delete Measuring Unit Confirmation Modal */}
       {showDeleteMeasuringUnitConfirmation && deletingMeasuringUnit && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -2335,6 +2697,54 @@ export default function Dashboard() {
                 className="px-6"
               >
                 Delete Unit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Stock Group Confirmation Modal */}
+      {showDeleteStockGroupConfirmation && deletingStockGroup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close Icon */}
+            <button 
+              onClick={() => setShowDeleteStockGroupConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Icon */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Delete Stock Group?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will permanently remove &quot;{deletingStockGroup.name}&quot; from your stock groups. This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteStockGroupConfirmation(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteStockGroup}
+                className="px-6"
+              >
+                Delete Group
               </Button>
             </div>
           </div>
