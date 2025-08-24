@@ -563,7 +563,7 @@ export default function Dashboard() {
             <TabsList className="flex justify-start bg-transparent h-auto p-0 px-6 border-b-0 shadow-none">
               <TabsTrigger 
                 value="stock-item" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger active-tab relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
                 style={{ 
                   '--tw-text-opacity': '1',
                   '--tw-border-opacity': '1'

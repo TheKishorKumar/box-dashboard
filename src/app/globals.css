@@ -123,12 +123,24 @@
 
 /* Custom styles for top navigation tabs */
 .tabs-trigger[data-state="active"] {
-  color: #D8550D !important;
-  border-bottom-color: #D8550D !important;
+  color: #d8550d !important;
+  border-bottom-color: #d8550d !important;
   border-bottom-width: 2px !important;
 }
 
 .tabs-trigger[data-state="active"]:hover {
-  color: #A8420A !important;
-  border-bottom-color: #A8420A !important;
+  color: #a8420a !important;
+  border-bottom-color: #a8420a !important;
+}
+
+/* Fallback for production builds */
+.active-tab {
+  color: #d8550d !important;
+  border-bottom-color: #d8550d !important;
+  border-bottom-width: 2px !important;
+}
+
+.active-tab:hover {
+  color: #a8420a !important;
+  border-bottom-color: #a8420a !important;
 }
