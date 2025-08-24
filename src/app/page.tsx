@@ -181,61 +181,23 @@ export default function Dashboard() {
 
     // Load data from localStorage after hydration
   useEffect(() => {
-    const loadData = () => {
-      try {
-        const saved = localStorage.getItem('stockItems')
-        if (saved) {
-          setStockItems(JSON.parse(saved))
-        }
-        
-        // Load stock groups from localStorage
-        const savedGroups = localStorage.getItem('stockGroups')
-        if (savedGroups) {
-          setStockGroups(JSON.parse(savedGroups))
-        }
-      } catch (error) {
-        console.error('Error loading data from localStorage:', error)
-        setStockItems([])
-        setStockGroups([
-          "Groceries",
-          "Vegetables", 
-          "Meat",
-          "Dairy",
-          "Beverages",
-          "Pantry",
-          "Oils",
-          "Fruits",
-          "Grains",
-          "Spices",
-          "Condiments",
-          "Frozen Foods",
-          "Snacks",
-          "Bakery",
-          "Seafood",
-          "Poultry",
-          "Cleaning Supplies",
-          "Paper Products",
-          "Alcoholic Beverages"
-        ])
-      } finally {
-        setIsHydrated(true)
-        setIsLoading(false)
+    try {
+      const saved = localStorage.getItem('stockItems')
+      if (saved) {
+        setStockItems(JSON.parse(saved))
       }
+      
+      // Load stock groups from localStorage
+      const savedGroups = localStorage.getItem('stockGroups')
+      if (savedGroups) {
+        setStockGroups(JSON.parse(savedGroups))
+      }
+    } catch (error) {
+      console.error('Error loading data from localStorage:', error)
     }
-
-    // Add a small delay to ensure proper hydration
-    const timer = setTimeout(loadData, 100)
     
-    // Fallback timeout to prevent infinite loading
-    const fallbackTimer = setTimeout(() => {
-      setIsHydrated(true)
-      setIsLoading(false)
-    }, 3000)
-    
-    return () => {
-      clearTimeout(timer)
-      clearTimeout(fallbackTimer)
-    }
+    setIsHydrated(true)
+    setIsLoading(false)
   }, [])
 
   // Handle clicking outside to close dropdowns
@@ -1614,11 +1576,7 @@ export default function Dashboard() {
 
               {/* Stock Items Table */}
               <div>
-                {isLoading ? (
-                  <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="text-gray-500">Loading...</div>
-                  </div>
-                ) : stockItems.length === 0 ? (
+                {stockItems.length === 0 ? (
                   <StockItemsEmptyState onAddStockItem={handleAddStockItem} />
                 ) : (
                   <Table>
