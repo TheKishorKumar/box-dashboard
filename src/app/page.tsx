@@ -28,6 +28,13 @@ interface StockTransaction {
   notes: string
 }
 
+interface MeasuringUnit {
+  id: number
+  name: string
+  abbreviation: string
+  createdAt: string
+}
+
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -118,7 +125,7 @@ export default function Dashboard() {
   ])
   const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
   const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
-  const measuringUnits = [
+  const defaultMeasuringUnitsList = [
     "kg",
     "g", 
     "L",
@@ -180,8 +187,8 @@ export default function Dashboard() {
     group.toLowerCase().includes(stockGroupSearch.toLowerCase())
   )
 
-  // Filter measuring units based on search
-  const filteredMeasuringUnits = measuringUnits.filter(unit =>
+  // Filter default measuring units based on search (for dropdown)
+  const filteredDefaultMeasuringUnits = defaultMeasuringUnitsList.filter(unit =>
     unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
   )
 
@@ -231,7 +238,17 @@ export default function Dashboard() {
       setStockGroups(JSON.parse(savedGroups))
     }
     
+    // Load measuring units from localStorage
+    const savedMeasuringUnits = localStorage.getItem('measuringUnits')
+    if (savedMeasuringUnits) {
+      setMeasuringUnitsData(JSON.parse(savedMeasuringUnits))
+    } else {
+      // Initialize with default measuring units if none exist
+      setMeasuringUnitsData(defaultMeasuringUnits)
+    }
+    
     setIsHydrated(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Listen for localStorage changes to update stock items in real-time
@@ -668,10 +685,121 @@ export default function Dashboard() {
     }
   }, [isIconDropdownOpen])
 
+  // State for measuring units management
+  const [measuringUnitsData, setMeasuringUnitsData] = useState<MeasuringUnit[]>([])
+  const [showCreateMeasuringUnit, setShowCreateMeasuringUnit] = useState(false)
+  const [newMeasuringUnitName, setNewMeasuringUnitName] = useState("")
+  const [newMeasuringUnitAbbr, setNewMeasuringUnitAbbr] = useState("")
+  const [measuringUnitSearchData, setMeasuringUnitSearchData] = useState("")
+  const [editingMeasuringUnit, setEditingMeasuringUnit] = useState<MeasuringUnit | null>(null)
+  const [showDeleteMeasuringUnitConfirmation, setShowDeleteMeasuringUnitConfirmation] = useState(false)
+  const [deletingMeasuringUnit, setDeletingMeasuringUnit] = useState<MeasuringUnit | null>(null)
+  
+  // Default measuring units
+  const defaultMeasuringUnits = [
+    { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
+    { id: 2, name: "Grams", abbreviation: "g", createdAt: new Date().toISOString() },
+    { id: 3, name: "Liters", abbreviation: "L", createdAt: new Date().toISOString() },
+    { id: 4, name: "Milliliters", abbreviation: "ml", createdAt: new Date().toISOString() },
+    { id: 5, name: "Pieces", abbreviation: "pcs", createdAt: new Date().toISOString() },
+    { id: 6, name: "Boxes", abbreviation: "boxes", createdAt: new Date().toISOString() },
+    { id: 7, name: "Bottles", abbreviation: "bottles", createdAt: new Date().toISOString() },
+    { id: 8, name: "Cans", abbreviation: "cans", createdAt: new Date().toISOString() },
+    { id: 9, name: "Bags", abbreviation: "bags", createdAt: new Date().toISOString() },
+    { id: 10, name: "Units", abbreviation: "units", createdAt: new Date().toISOString() },
+    { id: 11, name: "Packs", abbreviation: "packs", createdAt: new Date().toISOString() },
+    { id: 12, name: "Cartons", abbreviation: "cartons", createdAt: new Date().toISOString() },
+    { id: 13, name: "Dozens", abbreviation: "dozens", createdAt: new Date().toISOString() },
+    { id: 14, name: "Pairs", abbreviation: "pairs", createdAt: new Date().toISOString() },
+    { id: 15, name: "Sets", abbreviation: "sets", createdAt: new Date().toISOString() },
+    { id: 16, name: "Rolls", abbreviation: "rolls", createdAt: new Date().toISOString() },
+    { id: 17, name: "Sheets", abbreviation: "sheets", createdAt: new Date().toISOString() },
+    { id: 18, name: "Slices", abbreviation: "slices", createdAt: new Date().toISOString() },
+    { id: 19, name: "Cups", abbreviation: "cups", createdAt: new Date().toISOString() },
+    { id: 20, name: "Tablespoons", abbreviation: "tbsp", createdAt: new Date().toISOString() },
+    { id: 21, name: "Teaspoons", abbreviation: "tsp", createdAt: new Date().toISOString() },
+    { id: 22, name: "Ounces", abbreviation: "oz", createdAt: new Date().toISOString() },
+    { id: 23, name: "Pounds", abbreviation: "lbs", createdAt: new Date().toISOString() },
+    { id: 24, name: "Quarts", abbreviation: "qt", createdAt: new Date().toISOString() },
+    { id: 25, name: "Gallons", abbreviation: "gal", createdAt: new Date().toISOString() }
+  ]
+
+  // Custom setter that saves measuring units to localStorage
+  const updateMeasuringUnits = (newUnits: MeasuringUnit[]) => {
+    setMeasuringUnitsData(newUnits)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('measuringUnits', JSON.stringify(newUnits))
+    }
+  }
+
+  // Handle creating a new measuring unit
+  const handleCreateMeasuringUnit = () => {
+    if (newMeasuringUnitName.trim() && newMeasuringUnitAbbr.trim()) {
+      const newUnit: MeasuringUnit = {
+        id: generateUniqueId(),
+        name: newMeasuringUnitName.trim(),
+        abbreviation: newMeasuringUnitAbbr.trim(),
+        createdAt: new Date().toISOString()
+      }
+      updateMeasuringUnits([...measuringUnitsData, newUnit])
+      setNewMeasuringUnitName("")
+      setNewMeasuringUnitAbbr("")
+      setShowCreateMeasuringUnit(false)
+      addToast('success', `Measuring unit "${newUnit.name}" created successfully`)
+    }
+  }
+
+  // Handle editing measuring unit
+  const handleEditMeasuringUnit = (unit: MeasuringUnit) => {
+    setEditingMeasuringUnit(unit)
+    setNewMeasuringUnitName(unit.name)
+    setNewMeasuringUnitAbbr(unit.abbreviation)
+    setShowCreateMeasuringUnit(true)
+  }
+
+  // Handle updating measuring unit
+  const handleUpdateMeasuringUnit = () => {
+    if (editingMeasuringUnit && newMeasuringUnitName.trim() && newMeasuringUnitAbbr.trim()) {
+      const updatedUnit: MeasuringUnit = {
+        ...editingMeasuringUnit,
+        name: newMeasuringUnitName.trim(),
+        abbreviation: newMeasuringUnitAbbr.trim()
+      }
+      updateMeasuringUnits(measuringUnitsData.map(unit => unit.id === editingMeasuringUnit.id ? updatedUnit : unit))
+      setNewMeasuringUnitName("")
+      setNewMeasuringUnitAbbr("")
+      setEditingMeasuringUnit(null)
+      setShowCreateMeasuringUnit(false)
+      addToast('success', `Measuring unit "${updatedUnit.name}" updated successfully`)
+    }
+  }
+
+  // Handle delete measuring unit
+  const handleDeleteMeasuringUnit = (unit: MeasuringUnit) => {
+    setDeletingMeasuringUnit(unit)
+    setShowDeleteMeasuringUnitConfirmation(true)
+  }
+
+  // Confirm delete measuring unit
+  const confirmDeleteMeasuringUnit = () => {
+    if (deletingMeasuringUnit) {
+      updateMeasuringUnits(measuringUnitsData.filter(unit => unit.id !== deletingMeasuringUnit.id))
+      addToast('success', `Measuring unit "${deletingMeasuringUnit.name}" deleted successfully`)
+      setDeletingMeasuringUnit(null)
+      setShowDeleteMeasuringUnitConfirmation(false)
+    }
+  }
+
+  // Filter measuring units based on search
+  const filteredMeasuringUnitsData = measuringUnitsData.filter(unit =>
+    unit.name.toLowerCase().includes(measuringUnitSearchData.toLowerCase()) ||
+    unit.abbreviation.toLowerCase().includes(measuringUnitSearchData.toLowerCase())
+  )
+
   return (
     <div className="min-h-screen bg-white flex">
             {/* Sidebar */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col`}>
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 h-screen z-10`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center gap-3">
           <button 
@@ -743,14 +871,16 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Navigation Tabs */}
-        <div className="bg-white border-b border-gray-200">
+      <div className={`flex-1 flex flex-col ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+        {/* Page Content */}
+        <div className="flex-1 px-6 pb-6">
           <Tabs defaultValue="stock-item" className="w-full">
-            <TabsList className="flex justify-start bg-transparent h-auto p-0 px-6 border-b-0 shadow-none">
+            {/* Top Navigation Tabs */}
+            <div className="border-b border-gray-200 mb-6 sticky top-0 bg-white z-20">
+            <TabsList className="flex justify-start bg-white h-auto p-0 border-b-0 shadow-none">
               <TabsTrigger 
                 value="stock-item" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
                 style={{ 
                   '--tw-text-opacity': '1',
                   '--tw-border-opacity': '1'
@@ -759,42 +889,31 @@ export default function Dashboard() {
                 Stock item
               </TabsTrigger>
               <TabsTrigger 
-                value="consumptions" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
-              >
-                Consumptions
-              </TabsTrigger>
-              <TabsTrigger 
                 value="suppliers" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                 Suppliers
               </TabsTrigger>
               <TabsTrigger 
                 value="measuring-unit" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                 Measuring unit
               </TabsTrigger>
               <TabsTrigger 
                 value="stock-group" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                 Stock group
               </TabsTrigger>
               <TabsTrigger 
                 value="stock-history" 
-                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
-                Activity Logs
+                  Activity Logs
               </TabsTrigger>
             </TabsList>
-          </Tabs>
         </div>
-
-        {/* Page Content */}
-        <div className="flex-1 p-6">
-          <Tabs defaultValue="stock-item" className="w-full">
             {/* Stock Item Tab */}
             <TabsContent value="stock-item" className="space-y-6">
               {/* Header */}
@@ -1140,7 +1259,7 @@ export default function Dashboard() {
                                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
                                     {/* Units List - Fixed height for 5 items */}
                                     <div className="max-h-[200px] overflow-y-auto">
-                                      {filteredMeasuringUnits.map((unit) => (
+                                      {filteredDefaultMeasuringUnits.map((unit) => (
                                         <button
                                           key={unit}
                                           type="button"
@@ -1619,7 +1738,7 @@ export default function Dashboard() {
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
                                   {/* Units List - Fixed height for 5 items */}
                                   <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredMeasuringUnits.map((unit) => (
+                                    {filteredDefaultMeasuringUnits.map((unit) => (
                                       <button
                                         key={unit}
                                         type="button"
@@ -1894,14 +2013,6 @@ export default function Dashboard() {
               </div>
             </TabsContent>
 
-            {/* Other Tabs Content */}
-            <TabsContent value="consumptions" className="space-y-6">
-              <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Consumptions</h2>
-                <p className="text-gray-600 mt-2">Track ingredient consumption and usage patterns.</p>
-              </div>
-            </TabsContent>
-
             <TabsContent value="suppliers" className="space-y-6">
               <div className="text-center py-12">
                 <h2 className="text-xl font-semibold text-gray-900">Suppliers</h2>
@@ -1910,9 +2021,127 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="measuring-unit" className="space-y-6">
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Measuring Units</h1>
+                  <p className="text-gray-600 mt-1">
+                    Manage measurement units used for tracking stock items in your inventory.
+                  </p>
+                </div>
+                {measuringUnitsData.length > 0 && (
+                  <Button 
+                    onClick={() => setShowCreateMeasuringUnit(true)}
+                    className="text-white" 
+                    style={{ backgroundColor: '#D8550D' }} 
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Measuring Unit
+                  </Button>
+                )}
+              </div>
+
+              {/* Search */}
+              {measuringUnitsData.length > 0 && (
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                      placeholder="Search measuring units" 
+                      className="pl-10 bg-white border-gray-200"
+                      value={measuringUnitSearchData}
+                      onChange={(e) => setMeasuringUnitSearchData(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Measuring Units Table */}
+              <div>
+                {!isHydrated ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : measuringUnitsData.length === 0 ? (
               <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Measuring Units</h2>
-                <p className="text-gray-600 mt-2">Configure measurement units for your inventory.</p>
+                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No measuring units added yet</h3>
+                    <p className="text-gray-600 mb-6">Start managing your measurement units by adding your first unit.</p>
+                    <Button 
+                      onClick={() => setShowCreateMeasuringUnit(true)}
+                      className="text-white"
+                      style={{ backgroundColor: '#D8550D' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Measuring Unit
+                    </Button>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Unit Name</TableHead>
+                        <TableHead>Short Name</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredMeasuringUnitsData.map((unit) => (
+                        <TableRow key={unit.id} className="hover:bg-gray-50 transition-colors">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-600">
+                                  {unit.abbreviation.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="font-medium">{unit.name}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{unit.abbreviation}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditMeasuringUnit(unit)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit measuring unit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteMeasuringUnit(unit)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete measuring unit
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </TabsContent>
 
@@ -1952,6 +2181,164 @@ export default function Dashboard() {
           onClose={() => setShowStockOutForm(false)}
           onSubmit={handleRecordUsageSubmit}
         />
+      )}
+
+      {/* Measuring Unit Creation/Edit Sheet */}
+      <Sheet open={showCreateMeasuringUnit} onOpenChange={(open) => {
+        setShowCreateMeasuringUnit(open)
+        if (!open) {
+          // Reset edit state when sheet is closed
+          setEditingMeasuringUnit(null)
+          setNewMeasuringUnitName("")
+          setNewMeasuringUnitAbbr("")
+        }
+      }}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          <form onSubmit={(e) => { 
+            e.preventDefault(); 
+            if (editingMeasuringUnit) {
+              handleUpdateMeasuringUnit();
+            } else {
+              handleCreateMeasuringUnit();
+            }
+          }} className="flex flex-col h-full">
+            <div className="px-6 flex-1">
+              <SheetHeader className="pl-0">
+                <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                  {editingMeasuringUnit ? "Edit Measuring Unit" : "New Measuring Unit"}
+                </SheetTitle>
+                <SheetDescription>
+                  {editingMeasuringUnit ? "Update the measuring unit details." : "Add a new measurement unit to your inventory system."}
+                </SheetDescription>
+              </SheetHeader>
+              
+              {/* Separator line */}
+              <div className="border-b border-gray-200 mb-6"></div>
+              
+              <div className="space-y-6 mt-6">
+                {/* Unit Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="unit-name" className="text-sm font-medium">
+                    Unit Name *
+                  </Label>
+                  <Input
+                    id="unit-name"
+                    placeholder="E.g. Kilograms, Liters, Pieces"
+                    value={newMeasuringUnitName}
+                    onChange={(e) => setNewMeasuringUnitName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                {/* Short Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="unit-abbr" className="text-sm font-medium">
+                    Short Name *
+                  </Label>
+                  <Input
+                    id="unit-abbr"
+                    placeholder="E.g. kg, L, pcs"
+                    value={newMeasuringUnitAbbr}
+                    onChange={(e) => setNewMeasuringUnitAbbr(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  if (editingMeasuringUnit) {
+                    // Cancel edit - close form and reset state
+                    setShowCreateMeasuringUnit(false)
+                    setEditingMeasuringUnit(null)
+                    setNewMeasuringUnitName("")
+                    setNewMeasuringUnitAbbr("")
+                  } else {
+                    // Add another - create unit and reset form
+                    if (newMeasuringUnitName.trim() && newMeasuringUnitAbbr.trim()) {
+                      const newUnit: MeasuringUnit = {
+                        id: generateUniqueId(),
+                        name: newMeasuringUnitName.trim(),
+                        abbreviation: newMeasuringUnitAbbr.trim(),
+                        createdAt: new Date().toISOString()
+                      }
+                      updateMeasuringUnits([...measuringUnitsData, newUnit])
+                      addToast('success', `Measuring unit "${newUnit.name}" created successfully`)
+                      
+                      // Reset form
+                      setNewMeasuringUnitName("")
+                      setNewMeasuringUnitAbbr("")
+                    }
+                  }
+                }}
+              >
+                {editingMeasuringUnit ? "Cancel" : "Add another"}
+              </Button>
+              <Button 
+                type="submit" 
+                className="text-white flex-1"
+                style={{ backgroundColor: '#D8550D' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+              >
+                {editingMeasuringUnit ? "Update Unit" : "Create Unit"}
+              </Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Measuring Unit Confirmation Modal */}
+      {showDeleteMeasuringUnitConfirmation && deletingMeasuringUnit && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close Icon */}
+            <button 
+              onClick={() => setShowDeleteMeasuringUnitConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Icon */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Delete Measuring Unit?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will permanently remove &quot;{deletingMeasuringUnit.name}&quot; from your measuring units. This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteMeasuringUnitConfirmation(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteMeasuringUnit}
+                className="px-6"
+              >
+                Delete Unit
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
