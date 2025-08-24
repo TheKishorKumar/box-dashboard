@@ -92,12 +92,12 @@ export function EditRecordForm({ transaction, onClose, onSubmit }: EditRecordFor
         {/* Per Unit Price */}
         <div className="space-y-2">
           <Label htmlFor="perUnitPrice" className="text-sm font-medium">
-            Per unit price (₹) *
+            Per unit price (रु) *
           </Label>
           <Input
             id="perUnitPrice"
             type="number"
-            placeholder="E.g. 120"
+                          placeholder="E.g. रु 120"
             value={formData.perUnitPrice || ""}
             onChange={(e) => handleInputChange("perUnitPrice", parseFloat(e.target.value) || 0)}
             required

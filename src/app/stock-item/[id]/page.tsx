@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { formatNepaliCurrency } from "@/lib/utils"
 
 interface StockItem {
   id: number
@@ -601,7 +602,7 @@ export default function StockItemHistory({ params }: { params: Promise<{ id: str
                      <div className="text-gray-900">{transaction.party}</div>
                    </TableCell>
                    <TableCell>
-                     <div className="text-gray-900">₹ {transaction.stockValue.toLocaleString()}</div>
+                     <div className="text-gray-900">{formatNepaliCurrency(transaction.stockValue)}</div>
                    </TableCell>
                    <TableCell>
                      <div className="text-gray-600">{transaction.notes}</div>

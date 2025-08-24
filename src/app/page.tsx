@@ -76,11 +76,13 @@ import {
   Edit,
   Trash2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  X
 } from "lucide-react"
 import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
 import { SupplierSelect } from "@/components/ui/supplier-select"
 import Link from "next/link"
+import { formatNepaliCurrency } from "@/lib/utils"
 
 export default function Dashboard() {
   // Add custom CSS for brand colors
@@ -105,7 +107,13 @@ export default function Dashboard() {
 
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
+  const [stockTransactions, setStockTransactions] = useState<StockTransaction[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
+  
+  // Filter states for stock items
+  const [stockItemSearch, setStockItemSearch] = useState("")
+  const [stockItemCategoryFilter, setStockItemCategoryFilter] = useState("all")
+  const [stockItemStatusFilter, setStockItemStatusFilter] = useState("all")
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [newGroupName, setNewGroupName] = useState("")
   const [stockGroupSearch, setStockGroupSearch] = useState("")
@@ -195,6 +203,22 @@ export default function Dashboard() {
     group.toLowerCase().includes(stockGroupSearch.toLowerCase())
   )
 
+  // Filter stock items based on search and filters
+  const filteredStockItems = stockItems.filter(item => {
+    // Search filter
+    const matchesSearch = item.name.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
+                         item.description?.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
+                         item.category.toLowerCase().includes(stockItemSearch.toLowerCase())
+    
+    // Category filter
+    const matchesCategory = stockItemCategoryFilter === "all" || item.category === stockItemCategoryFilter
+    
+    // Status filter
+    const matchesStatus = stockItemStatusFilter === "all" || item.status === stockItemStatusFilter
+    
+    return matchesSearch && matchesCategory && matchesStatus
+  })
+
   // Filter default measuring units based on search (for dropdown)
   const filteredDefaultMeasuringUnits = defaultMeasuringUnitsList.filter(unit =>
     unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
@@ -264,15 +288,28 @@ export default function Dashboard() {
       setStockGroupsData(defaultStockGroups)
     }
     
+    // Load stock transactions from localStorage
+    const savedTransactions = localStorage.getItem('stockTransactions')
+    if (savedTransactions) {
+      const transactions = JSON.parse(savedTransactions)
+      console.log('Loaded transactions:', transactions)
+      setStockTransactions(transactions)
+    } else {
+      console.log('No transactions found in localStorage')
+    }
+    
     setIsHydrated(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Listen for localStorage changes to update stock items in real-time
+  // Listen for localStorage changes to update stock items and transactions in real-time
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'stockItems' && e.newValue) {
         setStockItems(JSON.parse(e.newValue))
+      }
+      if (e.key === 'stockTransactions' && e.newValue) {
+        setStockTransactions(JSON.parse(e.newValue))
       }
     }
 
@@ -315,15 +352,19 @@ export default function Dashboard() {
   const [deletingItem, setDeletingItem] = useState<StockItem | null>(null)
   
   // State for sidebar - initialize with localStorage value if available
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Hydrate sidebar state from localStorage after component mounts
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedSidebarState = localStorage.getItem('sidebarCollapsed')
       if (savedSidebarState !== null) {
-        return JSON.parse(savedSidebarState)
+        setIsSidebarCollapsed(JSON.parse(savedSidebarState))
       }
+      setMounted(true)
     }
-    return false
-  })
+  }, [])
 
   // Save sidebar state to localStorage when it changes
   const handleSidebarToggle = () => {
@@ -401,10 +442,12 @@ export default function Dashboard() {
         notes: data.notes || "-"
       }
       
-      // Save transaction to localStorage
+      // Save transaction to localStorage and update state
       const existingTransactions = localStorage.getItem('stockTransactions')
       const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
-      localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
+      const updatedTransactions = [newTransaction, ...transactions]
+      localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+      setStockTransactions(updatedTransactions)
       
       addToast('success', `Recorded purchase of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
       setShowAddStockForm(false)
@@ -468,10 +511,12 @@ export default function Dashboard() {
         notes: data.notes || "-"
       }
       
-      // Save transaction to localStorage
+      // Save transaction to localStorage and update state
       const existingTransactions = localStorage.getItem('stockTransactions')
       const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
-      localStorage.setItem('stockTransactions', JSON.stringify([newTransaction, ...transactions]))
+      const updatedTransactions = [newTransaction, ...transactions]
+      localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+      setStockTransactions(updatedTransactions)
       
       addToast('success', `Recorded usage of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
       setShowStockOutForm(false)
@@ -553,10 +598,12 @@ export default function Dashboard() {
         notes: "Initial stock creation"
       }
       
-      // Save transaction to localStorage
+      // Save transaction to localStorage and update state
       const existingTransactions = localStorage.getItem('stockTransactions')
       const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
-      localStorage.setItem('stockTransactions', JSON.stringify([initialTransaction, ...transactions]))
+      const updatedTransactions = [initialTransaction, ...transactions]
+      localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+      setStockTransactions(updatedTransactions)
     }
     
     // Reset form
@@ -722,6 +769,15 @@ export default function Dashboard() {
   const [showDeleteStockGroupConfirmation, setShowDeleteStockGroupConfirmation] = useState(false)
   const [deletingStockGroup, setDeletingStockGroup] = useState<StockGroup | null>(null)
   
+  // State for activity logs management
+  const [activitySearchData, setActivitySearchData] = useState("")
+  const [activityFilterType, setActivityFilterType] = useState("all")
+  const [activityFilterItem, setActivityFilterItem] = useState("all")
+  const [showActivityDetailsModal, setShowActivityDetailsModal] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<StockTransaction | null>(null)
+  const [showDeleteActivityConfirmation, setShowDeleteActivityConfirmation] = useState(false)
+  const [deletingActivity, setDeletingActivity] = useState<StockTransaction | null>(null)
+  
   // Default measuring units
   const defaultMeasuringUnits = [
     { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
@@ -787,6 +843,14 @@ export default function Dashboard() {
     setStockGroupsData(newGroups)
     if (typeof window !== 'undefined') {
       localStorage.setItem('stockGroupsData', JSON.stringify(newGroups))
+    }
+  }
+
+  // Custom setter that saves stock transactions to localStorage
+  const updateStockTransactions = (newTransactions: StockTransaction[]) => {
+    setStockTransactions(newTransactions)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockTransactions', JSON.stringify(newTransactions))
     }
   }
 
@@ -925,10 +989,51 @@ export default function Dashboard() {
     itemCount: stockItems.filter(item => item.category === group.name).length
   }))
 
+  // Filter activity logs based on search and filters
+  const filteredActivityLogs = stockTransactions.filter(activity => {
+    const stockItem = stockItems.find(item => item.id === activity.stockItemId)
+    const matchesSearch = activitySearchData === "" || 
+      (stockItem?.name.toLowerCase().includes(activitySearchData.toLowerCase()) ||
+       activity.party.toLowerCase().includes(activitySearchData.toLowerCase()) ||
+       activity.notes.toLowerCase().includes(activitySearchData.toLowerCase()))
+    
+    const matchesType = activityFilterType === "all" || activity.type === activityFilterType
+    const matchesItem = activityFilterItem === "all" || stockItem?.name === activityFilterItem
+    
+    return matchesSearch && matchesType && matchesItem
+  })
+
+  // Debug logging
+  console.log('Stock transactions:', stockTransactions)
+  console.log('Filtered activity logs:', filteredActivityLogs)
+
+  // Handle viewing activity details
+  const handleViewActivityDetails = (activity: StockTransaction) => {
+    setSelectedActivity(activity)
+    setShowActivityDetailsModal(true)
+  }
+
+  // Handle deleting activity
+  const handleDeleteActivity = (activity: StockTransaction) => {
+    setDeletingActivity(activity)
+    setShowDeleteActivityConfirmation(true)
+  }
+
+  // Confirm delete activity
+  const confirmDeleteActivity = () => {
+    if (deletingActivity) {
+      const updatedTransactions = stockTransactions.filter(t => t.id !== deletingActivity.id)
+      updateStockTransactions(updatedTransactions)
+      setShowDeleteActivityConfirmation(false)
+      setDeletingActivity(null)
+      addToast('success', 'Activity record deleted successfully')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white flex">
             {/* Sidebar */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 h-screen z-10 transition-all duration-300 ease-in-out`}>
+      <div className={`${mounted && isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 h-screen z-10 transition-all duration-300 ease-in-out`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center gap-3">
           <button 
@@ -1000,7 +1105,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col ${isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 ease-in-out`}>
+      <div className={`flex-1 flex flex-col ${mounted && isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 ease-in-out`}>
         {/* Page Content */}
         <div className="flex-1 px-6 pb-6">
           <Tabs defaultValue="stock-item" className="w-full">
@@ -1442,7 +1547,7 @@ export default function Dashboard() {
                               id="price" 
                               type="number" 
                               step="0.01"
-                              placeholder="E.g. 120.00" 
+                              placeholder="E.g. रु 120" 
                               className="w-full"
                               value={formData.price}
                               onChange={(e) => handleInputChange("price", e.target.value)}
@@ -1936,7 +2041,7 @@ export default function Dashboard() {
                             id="edit-price" 
                             type="number" 
                             step="0.01"
-                            placeholder="E.g. 120.00" 
+                            placeholder="E.g. रु 120" 
                             className="w-full"
                             value={formData.price}
                             onChange={(e) => handleInputChange("price", e.target.value)}
@@ -1995,30 +2100,30 @@ export default function Dashboard() {
                     <Input 
                       placeholder="Search stock items" 
                       className="pl-10 bg-white border-gray-200"
+                      value={stockItemSearch}
+                      onChange={(e) => setStockItemSearch(e.target.value)}
                     />
                   </div>
-                  <Select>
+                  <Select value={stockItemCategoryFilter} onValueChange={setStockItemCategoryFilter}>
                     <SelectTrigger className="w-48 bg-white border-gray-200">
                       <SelectValue placeholder="Filter by category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="groceries">Groceries</SelectItem>
-                      <SelectItem value="vegetables">Vegetables</SelectItem>
-                      <SelectItem value="meat">Meat</SelectItem>
-                      <SelectItem value="dairy">Dairy</SelectItem>
-                      <SelectItem value="beverages">Beverages</SelectItem>
+                      {stockGroups.map((category) => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Select>
+                  <Select value={stockItemStatusFilter} onValueChange={setStockItemStatusFilter}>
                     <SelectTrigger className="w-48 bg-white border-gray-200">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="in-stock">In Stock</SelectItem>
-                      <SelectItem value="low-stock">Low Stock</SelectItem>
-                      <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                      <SelectItem value="Available">Available</SelectItem>
+                      <SelectItem value="Low Quantity">Low Quantity</SelectItem>
+                      <SelectItem value="Out of Stock">Out of Stock</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2032,6 +2137,22 @@ export default function Dashboard() {
                   </div>
                 ) : stockItems.length === 0 ? (
                   <StockItemsEmptyState onAddStockItem={handleAddStockItem} />
+                ) : filteredStockItems.length === 0 ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <div className="text-gray-500 mb-2">No stock items match your filters</div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setStockItemSearch("")
+                          setStockItemCategoryFilter("all")
+                          setStockItemStatusFilter("all")
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -2045,7 +2166,7 @@ export default function Dashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {stockItems.map((item) => (
+                      {filteredStockItems.map((item) => (
                         <TableRow 
                           key={item.id}
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
@@ -2404,9 +2525,157 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="stock-history" className="space-y-6">
-              <div className="text-center py-12">
-                <h2 className="text-xl font-semibold text-gray-900">Activity Logs</h2>
-                <p className="text-gray-600 mt-2">View all stock movements and usage history.</p>
+              {/* Header */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
+                  <p className="text-gray-600 mt-1">
+                    Transaction history and stock movements
+                  </p>
+                </div>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="flex gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input 
+                    placeholder="Search activities" 
+                    className="pl-10 bg-white border-gray-200"
+                    value={activitySearchData}
+                    onChange={(e) => setActivitySearchData(e.target.value)}
+                  />
+                </div>
+                <Select value={activityFilterType} onValueChange={setActivityFilterType}>
+                  <SelectTrigger className="w-48 bg-white border-gray-200">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Activities</SelectItem>
+                    <SelectItem value="Purchase">Purchase</SelectItem>
+                    <SelectItem value="Usage">Usage</SelectItem>
+                    <SelectItem value="Opening Stock">Opening Stock</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={activityFilterItem} onValueChange={setActivityFilterItem}>
+                  <SelectTrigger className="w-48 bg-white border-gray-200">
+                    <SelectValue placeholder="Filter by item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Items</SelectItem>
+                    {stockItems.map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Activity Logs Table */}
+              <div>
+                {!isHydrated ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : filteredActivityLogs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Activity className="w-12 h-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No activity logs found</h3>
+                    <p className="text-gray-600 mb-6">Start recording stock movements to see activity history.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredActivityLogs.map((activity) => {
+                        const stockItem = stockItems.find(item => item.id === activity.stockItemId)
+                        return (
+                          <TableRow key={activity.id} className="hover:bg-gray-50 transition-colors">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={stockItem?.image} />
+                                  <AvatarFallback>
+                                    {stockItem?.icon || stockItem?.name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{stockItem?.name || 'Unknown Item'}</div>
+                                  <div className="text-sm text-gray-500">{stockItem?.category}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  activity.type === "Purchase" 
+                                    ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                    : activity.type === "Opening Stock"
+                                    ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                    : "bg-red-100 text-red-800 hover:bg-red-100"
+                                }
+                              >
+                                {activity.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {activity.quantity} {activity.measuringUnit}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{activity.party || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{new Date(activity.date).toLocaleDateString()}</div>
+                                <div className="text-sm text-gray-500">{activity.time}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {formatNepaliCurrency(activity.stockValue)}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleViewActivityDetails(activity)}>
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleDeleteActivity(activity)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Record
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </TabsContent>
           </Tabs>
@@ -2793,6 +3062,121 @@ export default function Dashboard() {
                 className="px-6"
               >
                 Delete Item
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Details Modal */}
+      {showActivityDetailsModal && selectedActivity && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close button */}
+            <button 
+              onClick={() => setShowActivityDetailsModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Header */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                <FileText className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Activity Details</h3>
+                <p className="text-gray-600">Transaction information</p>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Item</label>
+                <p className="text-gray-900">{stockItems.find(item => item.id === selectedActivity.stockItemId)?.name || 'Unknown Item'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Type</label>
+                <p className="text-gray-900">{selectedActivity.type}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Quantity</label>
+                <p className="text-gray-900">{selectedActivity.quantity} {selectedActivity.measuringUnit}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Party</label>
+                <p className="text-gray-900">{selectedActivity.party || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Date & Time</label>
+                <p className="text-gray-900">{new Date(selectedActivity.date).toLocaleDateString()} at {selectedActivity.time}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Value</label>
+                <p className="text-gray-900">{formatNepaliCurrency(selectedActivity.stockValue)}</p>
+              </div>
+              {selectedActivity.notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Notes</label>
+                  <p className="text-gray-900">{selectedActivity.notes}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowActivityDetailsModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Activity Confirmation Modal */}
+      {showDeleteActivityConfirmation && deletingActivity && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Close button */}
+            <button 
+              onClick={() => setShowDeleteActivityConfirmation(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Icon and title */}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Delete Record?</h3>
+            </div>
+            
+            {/* Description */}
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              This will permanently remove this activity record from your history. This action cannot be undone.
+            </p>
+            
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteActivityConfirmation(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteActivity}
+                className="px-6"
+              >
+                Delete Record
               </Button>
             </div>
           </div>

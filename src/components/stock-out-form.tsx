@@ -145,12 +145,12 @@ export function StockOutForm({ itemName, measuringUnit, currentStock, onClose, o
         {/* Per Unit Price - Optional */}
         <div className="space-y-2">
           <Label htmlFor="perUnitPrice" className="text-sm font-medium">
-            Per unit price (₹) (Optional)
+            Per unit price (रु) (Optional)
           </Label>
           <Input
             id="perUnitPrice"
             type="number"
-            placeholder="E.g. 120"
+                          placeholder="E.g. रु 120"
             value={formData.perUnitPrice || ""}
             onChange={(e) => handleInputChange("perUnitPrice", parseFloat(e.target.value) || 0)}
           />

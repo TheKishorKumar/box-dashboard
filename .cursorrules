@@ -47,6 +47,27 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 - Use `flex-1 flex flex-col` for full-height layout
 - Consistent padding: `px-6 py-4` or `p-6`
 
+### 4. Currency & Number Formatting
+
+#### Nepali Currency Format
+- **Currency Symbol**: रु (Nepali Rupees)
+- **Format**: `रु 1,234.56` (with commas for thousands)
+- **Usage**: All monetary values throughout the application
+- **Implementation**: Use `formatNepaliCurrency(amount)` utility function
+
+#### Indian Numbering System
+- **Large Numbers**: Use Lakhs and Crores instead of millions/billions
+- **Format**: 
+  - 1,00,000 = 1 Lakh
+  - 1,00,00,000 = 1 Crore
+- **Implementation**: Use `formatIndianNumber(num)` utility function
+- **Comma Placement**: Every 3 digits from right, except for the last 3 digits of Lakhs/Crores
+
+#### Examples
+- **Small Amounts**: रु 120, रु 1,250
+- **Large Amounts**: रु 1,00,000 (1 Lakh), रु 1,00,00,000 (1 Crore)
+- **Decimal Values**: रु 1,234.56
+
 ### 4. Component Usage Patterns
 
 #### Forms (Slide-out Sheets)
@@ -413,7 +434,7 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 - **Titles**: Action + Entity (e.g., "Create stock item", "New Measuring Unit")
 - **Descriptions**: Purpose + benefit (e.g., "Add a new stock item to your inventory with initial stock quantity.")
 - **Labels**: Clear + required indicator (e.g., "Item name *", "Description (Optional)")
-- **Placeholders**: "E.g." + specific examples (e.g., "E.g. Tomatoes, Beer, Cheese")
+- **Placeholders**: "E.g." + specific examples (e.g., "E.g. Tomatoes, Beer, Cheese", "E.g. रु 120" for currency)
 
 ### 4. Button Text
 - **Primary Actions**: Action + Entity (e.g., "New stock item", "Save Stock item")

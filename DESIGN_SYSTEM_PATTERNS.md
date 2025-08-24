@@ -45,6 +45,30 @@ This document outlines the established design patterns, component usage, and UI 
 - **Gap Between Elements**: `gap-3`, `gap-4`
 - **Border Radius**: `rounded-lg`, `rounded-md`
 
+### 4. Currency & Number Formatting
+
+#### Nepali Currency Format
+
+- **Currency Symbol**: रु (Nepali Rupees)
+- **Format**: `रु 1,234.56` (with commas for thousands)
+- **Usage**: All monetary values throughout the application
+- **Implementation**: Use `formatNepaliCurrency(amount)` utility function
+
+#### Indian Numbering System
+
+- **Large Numbers**: Use Lakhs and Crores instead of millions/billions
+- **Format**:
+  - 1,00,000 = 1 Lakh
+  - 1,00,00,000 = 1 Crore
+- **Implementation**: Use `formatIndianNumber(num)` utility function
+- **Comma Placement**: Every 3 digits from right, except for the last 3 digits of Lakhs/Crores
+
+#### Examples
+
+- **Small Amounts**: रु 120, रु 1,250
+- **Large Amounts**: रु 1,00,000 (1 Lakh), रु 1,00,00,000 (1 Crore)
+- **Decimal Values**: रु 1,234.56
+
 ## Component Usage Patterns
 
 ### 1. Layout Structure
@@ -697,7 +721,7 @@ const handleInputChange = (field: string, value: string) => {
 - **Examples**:
   - "E.g. Tomatoes, Beer, Cheese"
   - "E.g. 50"
-  - "E.g. 120.00"
+  - "E.g. रु 120"
   - "E.g. 10"
   - "E.g. Handpicked dishes for a quick and satisfying lunch."
   - "E.g. Kilograms, Liters, Pieces"
