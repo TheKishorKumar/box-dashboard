@@ -566,7 +566,10 @@ export default function Dashboard() {
                 className="tabs-trigger active-tab relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
                 style={{ 
                   '--tw-text-opacity': '1',
-                  '--tw-border-opacity': '1'
+                  '--tw-border-opacity': '1',
+                  color: '#d8550d',
+                  borderBottomColor: '#d8550d',
+                  borderBottomWidth: '2px'
                 } as React.CSSProperties}
               >
                 Stock item
