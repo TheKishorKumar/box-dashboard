@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Activity } from "lucide-react"
 import { EmptyState } from "./ui/empty-state"
 
 interface ActivityLogsEmptyStateProps {

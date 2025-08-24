@@ -403,7 +403,7 @@ export default function Dashboard() {
     // Reset all data to default state
     updateStockItems([])
     updateSuppliers([])
-    updateStockGroups([])
+    updateStockGroupsData([])
     setStockTransactions([])
     setMeasuringUnitsData(defaultMeasuringUnits)
     setStockGroupsData(defaultStockGroups)
