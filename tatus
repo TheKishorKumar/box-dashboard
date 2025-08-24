@@ -1,0 +1,5 @@
+[33m878bf71[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Simplify loading logic: remove complex hydration and loading states
+[33m28f42f1[m Fix production loading issue: improve hydration logic and add fallback timeout
+[33m46fff78[m Use inline styles for active tab to fix production styling issue
+[33m9adb8eb[m Fix production tab styling: add fallback CSS class for active tab state
+[33m77c2a63[m Fix build errors: resolve duplicate exports, TypeScript types, and ESLint issues

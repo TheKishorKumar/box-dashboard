@@ -53,11 +53,29 @@ import { StockItemsEmptyState } from "@/components/stock-items-empty-state"
 import Link from "next/link"
 
 export default function Dashboard() {
+  // Add custom CSS for brand colors
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      .brand-orange { background-color: #D8550D; }
+      .brand-orange:hover { background-color: #A8420A; }
+    `
+    document.head.appendChild(style)
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style)
+      }
+    }
+  }, [])
+
+  // Generate unique ID function
+  const generateUniqueId = () => {
+    return Date.now() + Math.floor(Math.random() * 1000)
+  }
+
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [newGroupName, setNewGroupName] = useState("")
   const [stockGroupSearch, setStockGroupSearch] = useState("")
@@ -114,33 +132,6 @@ export default function Dashboard() {
     "gallons"
   ]
 
-  // Set mounted state to prevent hydration issues
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Add custom CSS for brand colors
-  useEffect(() => {
-    if (!mounted) return
-    
-    const style = document.createElement('style')
-    style.textContent = `
-      .brand-orange { background-color: #D8550D; }
-      .brand-orange:hover { background-color: #A8420A; }
-    `
-    document.head.appendChild(style)
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }
-  }, [mounted])
-
-  // Generate unique ID function
-  const generateUniqueId = () => {
-    return Date.now() + Math.floor(Math.random() * 1000)
-  }
-
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {
     setStockItems(newItems)
@@ -179,25 +170,20 @@ export default function Dashboard() {
     unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
   )
 
-    // Load data from localStorage after hydration
+  // Load data from localStorage after hydration
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stockItems')
-      if (saved) {
-        setStockItems(JSON.parse(saved))
-      }
-      
-      // Load stock groups from localStorage
-      const savedGroups = localStorage.getItem('stockGroups')
-      if (savedGroups) {
-        setStockGroups(JSON.parse(savedGroups))
-      }
-    } catch (error) {
-      console.error('Error loading data from localStorage:', error)
+    const saved = localStorage.getItem('stockItems')
+    if (saved) {
+      setStockItems(JSON.parse(saved))
+    }
+    
+    // Load stock groups from localStorage
+    const savedGroups = localStorage.getItem('stockGroups')
+    if (savedGroups) {
+      setStockGroups(JSON.parse(savedGroups))
     }
     
     setIsHydrated(true)
-    setIsLoading(false)
   }, [])
 
   // Handle clicking outside to close dropdowns
@@ -577,13 +563,10 @@ export default function Dashboard() {
             <TabsList className="flex justify-start bg-transparent h-auto p-0 px-6 border-b-0 shadow-none">
               <TabsTrigger 
                 value="stock-item" 
-                className="tabs-trigger active-tab relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+                className="tabs-trigger relative px-4 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
                 style={{ 
                   '--tw-text-opacity': '1',
-                  '--tw-border-opacity': '1',
-                  color: '#d8550d',
-                  borderBottomColor: '#d8550d',
-                  borderBottomWidth: '2px'
+                  '--tw-border-opacity': '1'
                 } as React.CSSProperties}
               >
                 Stock item
@@ -1576,7 +1559,11 @@ export default function Dashboard() {
 
               {/* Stock Items Table */}
               <div>
-                {stockItems.length === 0 ? (
+                {!isHydrated ? (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-gray-500">Loading...</div>
+                  </div>
+                ) : stockItems.length === 0 ? (
                   <StockItemsEmptyState onAddStockItem={handleAddStockItem} />
                 ) : (
                   <Table>
