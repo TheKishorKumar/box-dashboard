@@ -11,6 +11,10 @@ import { Toast } from '@/types'
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([])
 
+  const removeToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }, [])
+
   const addToast = useCallback((type: Toast['type'], message: string, action?: Toast['action']) => {
     const newToast: Toast = {
       id: Date.now() + Math.random(),
@@ -26,10 +30,6 @@ export function useToast() {
       removeToast(newToast.id)
     }, 5000)
   }, [removeToast])
-
-  const removeToast = useCallback((id: number) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id))
-  }, [])
 
   const clearToasts = useCallback(() => {
     setToasts([])

@@ -28,7 +28,7 @@ interface SupplierSelectProps {
 export function SupplierSelect({ 
   value, 
   onChange, 
-  placeholder = "Search or select supplier", 
+  placeholder = "Select supplier", 
   required = false,
   className = "",
   suppliers = [],

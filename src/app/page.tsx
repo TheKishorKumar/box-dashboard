@@ -9,7 +9,6 @@ interface StockItem {
   status: string
   lastUpdated: string
   image: string
-  description: string
   reorderLevel: number
   icon: string
   price: number
@@ -102,6 +101,7 @@ import { StockItemSelect } from "@/components/ui/stock-item-select"
 import { StockManagementMenu } from "@/components/stock-management-menu"
 import { MeasuringUnitSelect } from "@/components/ui/measuring-unit-select"
 import { StockGroupSelect } from "@/components/ui/stock-group-select"
+import { StockGroupFormSelect } from "@/components/ui/stock-group-form-select"
 import { NestedFormSheet } from "@/components/ui/nested-form-sheet"
 // import { SupplierForm } from "@/components/supplier-form"
 import Link from "next/link"
@@ -128,10 +128,19 @@ export default function Dashboard() {
     return Date.now() + Math.floor(Math.random() * 1000)
   }
 
+  // Helper function to get measuring unit abbreviation
+  const getMeasuringUnitAbbreviation = (measuringUnitName: string): string => {
+    const unit = measuringUnitsData.find(u => u.name === measuringUnitName)
+    return unit ? unit.abbreviation : measuringUnitName
+  }
+
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [stockTransactions, setStockTransactions] = useState<StockTransaction[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
+  
+  // State for active tab
+  const [activeTab, setActiveTab] = useState("stock-item")
   
   // Filter states for stock items
   const [stockItemSearch, setStockItemSearch] = useState("")
@@ -209,7 +218,6 @@ export default function Dashboard() {
   const filteredStockItems = stockItems.filter(item => {
     // Search filter
     const matchesSearch = item.name.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
-                         item.description?.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
                          item.category.toLowerCase().includes(stockItemSearch.toLowerCase())
     
     // Category filter
@@ -427,7 +435,6 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh red tomatoes for cooking",
         reorderLevel: 10,
         icon: "🍅",
         price: 120,
@@ -442,7 +449,6 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh chicken breast for cooking",
         reorderLevel: 5,
         icon: "🍗",
         price: 450,
@@ -457,7 +463,6 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh whole milk",
         reorderLevel: 8,
         icon: "🥛",
         price: 180,
@@ -472,7 +477,6 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Basmati rice for cooking",
         reorderLevel: 15,
         icon: "🍚",
         price: 200,
@@ -487,7 +491,6 @@ export default function Dashboard() {
         status: "Low Quantity",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh onions for cooking",
         reorderLevel: 10,
         icon: "🧅",
         price: 80,
@@ -718,7 +721,37 @@ export default function Dashboard() {
 
   // Function to handle adding stock item (opens the sheet)
   const handleAddStockItem = () => {
+    // Reset form data when opening create form
+    setFormData({
+      name: "",
+      category: "",
+      measuringUnit: "",
+      quantity: "",
+      reorderLevel: "",
+      icon: "",
+      price: "",
+      supplier: ""
+    })
     setIsSheetOpen(true)
+  }
+
+  // Function to handle edit sheet close and reset form data
+  const handleEditSheetClose = (open: boolean) => {
+    if (!open) {
+      // Reset form data when closing edit form
+      setFormData({
+        name: "",
+        category: "",
+        measuringUnit: "",
+        quantity: "",
+        reorderLevel: "",
+        icon: "",
+        price: "",
+        supplier: ""
+      })
+      setEditingItem(null)
+    }
+    setIsEditSheetOpen(open)
   }
 
   // Function to handle editing stock item
@@ -730,7 +763,6 @@ export default function Dashboard() {
       measuringUnit: item.measuringUnit,
       quantity: item.quantity.toString(),
       reorderLevel: item.reorderLevel.toString(),
-      description: item.description,
       icon: item.icon,
       price: item.price ? item.price.toString() : "",
       supplier: item.supplier || ""
@@ -749,6 +781,12 @@ export default function Dashboard() {
   const handleRecordUsageAction = (item: StockItem) => {
     setSelectedItem(item)
     setShowStockOutForm(true)
+  }
+
+  // Function to handle view stock movements action
+  const handleViewStockMovements = (item: StockItem) => {
+    setActivityFilterItem(item.name)
+    setActiveTab("stock-history")
   }
 
   // Function to handle add stock from Stock Movements tab
@@ -879,7 +917,7 @@ export default function Dashboard() {
       localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
       setStockTransactions(updatedTransactions)
       
-      addToast('success', `Recorded purchase of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
+      addToast('success', `Recorded purchase of ${data.quantity} ${getMeasuringUnitAbbreviation(selectedItem.measuringUnit)} for ${selectedItem.name}`)
       setShowAddStockForm(false)
       setSelectedItem(null)
     }
@@ -943,7 +981,7 @@ export default function Dashboard() {
       localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
       setStockTransactions(updatedTransactions)
       
-      addToast('success', `Recorded usage of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
+      addToast('success', `Recorded usage of ${data.quantity} ${getMeasuringUnitAbbreviation(selectedItem.measuringUnit)} for ${selectedItem.name}`)
       setShowStockOutForm(false)
       setSelectedItem(null)
     }
@@ -955,7 +993,6 @@ export default function Dashboard() {
     measuringUnit: "",
     quantity: "",
     reorderLevel: "",
-    description: "",
     icon: "",
     price: "",
     supplier: ""
@@ -992,7 +1029,6 @@ export default function Dashboard() {
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       image: "/avatars/default.jpg",
-      description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
       price: parseFloat(formData.price) || 0,
@@ -1039,7 +1075,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1070,7 +1105,6 @@ export default function Dashboard() {
         return "Available"
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
-      description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
       price: parseFloat(formData.price) || 0,
@@ -1086,7 +1120,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1104,7 +1137,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1237,7 +1269,7 @@ export default function Dashboard() {
     notes: ""
   })
   
-  // Default measuring units
+  // Default measuring units (top 7 most used)
   const defaultMeasuringUnits = [
     { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
     { id: 2, name: "Grams", abbreviation: "g", createdAt: new Date().toISOString() },
@@ -1245,48 +1277,18 @@ export default function Dashboard() {
     { id: 4, name: "Milliliters", abbreviation: "ml", createdAt: new Date().toISOString() },
     { id: 5, name: "Pieces", abbreviation: "pcs", createdAt: new Date().toISOString() },
     { id: 6, name: "Boxes", abbreviation: "boxes", createdAt: new Date().toISOString() },
-    { id: 7, name: "Bottles", abbreviation: "bottles", createdAt: new Date().toISOString() },
-    { id: 8, name: "Cans", abbreviation: "cans", createdAt: new Date().toISOString() },
-    { id: 9, name: "Bags", abbreviation: "bags", createdAt: new Date().toISOString() },
-    { id: 10, name: "Units", abbreviation: "units", createdAt: new Date().toISOString() },
-    { id: 11, name: "Packs", abbreviation: "packs", createdAt: new Date().toISOString() },
-    { id: 12, name: "Cartons", abbreviation: "cartons", createdAt: new Date().toISOString() },
-    { id: 13, name: "Dozens", abbreviation: "dozens", createdAt: new Date().toISOString() },
-    { id: 14, name: "Pairs", abbreviation: "pairs", createdAt: new Date().toISOString() },
-    { id: 15, name: "Sets", abbreviation: "sets", createdAt: new Date().toISOString() },
-    { id: 16, name: "Rolls", abbreviation: "rolls", createdAt: new Date().toISOString() },
-    { id: 17, name: "Sheets", abbreviation: "sheets", createdAt: new Date().toISOString() },
-    { id: 18, name: "Slices", abbreviation: "slices", createdAt: new Date().toISOString() },
-    { id: 19, name: "Cups", abbreviation: "cups", createdAt: new Date().toISOString() },
-    { id: 20, name: "Tablespoons", abbreviation: "tbsp", createdAt: new Date().toISOString() },
-    { id: 21, name: "Teaspoons", abbreviation: "tsp", createdAt: new Date().toISOString() },
-    { id: 22, name: "Ounces", abbreviation: "oz", createdAt: new Date().toISOString() },
-    { id: 23, name: "Pounds", abbreviation: "lbs", createdAt: new Date().toISOString() },
-    { id: 24, name: "Quarts", abbreviation: "qt", createdAt: new Date().toISOString() },
-    { id: 25, name: "Gallons", abbreviation: "gal", createdAt: new Date().toISOString() }
+    { id: 7, name: "Bottles", abbreviation: "bottles", createdAt: new Date().toISOString() }
   ]
 
-  // Default stock groups
+  // Default stock groups (top 7 most used)
   const defaultStockGroups = [
-    { id: 1, name: "Groceries", description: "Basic grocery items and staples", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 2, name: "Vegetables", description: "Fresh vegetables and produce", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 3, name: "Meat", description: "Fresh meat and poultry products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 4, name: "Dairy", description: "Dairy products and milk-based items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 1, name: "Vegetables", description: "Fresh vegetables and produce", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 2, name: "Meat", description: "Fresh meat and poultry products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 3, name: "Dairy", description: "Dairy products and milk-based items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 4, name: "Grains", description: "Rice, wheat, and grain products", itemCount: 0, createdAt: new Date().toISOString() },
     { id: 5, name: "Beverages", description: "Drinks and beverage products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 6, name: "Pantry", description: "Pantry staples and dry goods", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 7, name: "Oils", description: "Cooking oils and fats", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 8, name: "Fruits", description: "Fresh fruits and dried fruits", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 9, name: "Grains", description: "Rice, wheat, and grain products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 10, name: "Spices", description: "Spices, herbs, and seasonings", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 11, name: "Condiments", description: "Sauces, dressings, and condiments", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 12, name: "Frozen Foods", description: "Frozen food items", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 13, name: "Snacks", description: "Snack foods and treats", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 14, name: "Bakery", description: "Bread, pastries, and baked goods", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 15, name: "Seafood", description: "Fish and seafood products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 16, name: "Poultry", description: "Chicken, turkey, and other poultry", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 17, name: "Cleaning Supplies", description: "Cleaning and maintenance supplies", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 18, name: "Paper Products", description: "Paper towels, napkins, and disposables", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 19, name: "Alcoholic Beverages", description: "Beer, wine, and spirits", itemCount: 0, createdAt: new Date().toISOString() }
+    { id: 6, name: "Spices", description: "Spices, herbs, and seasonings", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 7, name: "Oils", description: "Cooking oils and fats", itemCount: 0, createdAt: new Date().toISOString() }
   ]
 
   // Custom setter that saves measuring units to localStorage
@@ -1569,7 +1571,7 @@ export default function Dashboard() {
       <div className={`flex-1 flex flex-col ${mounted && isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 ease-in-out`}>
         {/* Page Content */}
         <div className="flex-1 px-6 pb-6">
-          <Tabs defaultValue="stock-item" className="w-full">
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Top Navigation Tabs */}
             <div className="border-b border-gray-200 mb-6 sticky top-0 bg-white z-20">
             <TabsList className="flex justify-start bg-white h-auto p-0 border-b-0 shadow-none">
@@ -1827,11 +1829,12 @@ export default function Dashboard() {
                             <Label htmlFor="stock-group" className="text-sm font-medium">
                               Stock group *
                             </Label>
-                            <StockGroupSelect
+                            <StockGroupFormSelect
                               value={formData.category || ""}
                               onChange={(value) => handleInputChange("category", value)}
-                              placeholder="Search or select a stock group"
+                              placeholder="Select a stock group"
                               stockGroups={stockGroupsData}
+                              required
                             />
                           </div>
                           
@@ -1858,8 +1861,9 @@ export default function Dashboard() {
                               <MeasuringUnitSelect
                                 value={formData.measuringUnit || ""}
                                 onChange={(value) => handleInputChange("measuringUnit", value)}
-                                placeholder="Search or select measuring unit"
+                                placeholder="Select measuring unit"
                                 measuringUnits={measuringUnitsData}
+                                required
                               />
                             </div>
                           </div>
@@ -1887,7 +1891,7 @@ export default function Dashboard() {
                             <SupplierSelect
                               value={formData.supplier || ""}
                               onChange={(value) => handleInputChange("supplier", value)}
-                              placeholder="Search or select supplier"
+                              placeholder="Select supplier"
                               suppliers={suppliers}
                               onAddSupplier={handleAddSupplierFromSelect}
                               onOpenNestedForm={handleOpenNestedSupplierForm}
@@ -1909,27 +1913,25 @@ export default function Dashboard() {
                             <p className="text-xs text-gray-500">Minimum quantity before reordering</p>
                           </div>
                           
-                          <div className="space-y-2">
-                            <Label htmlFor="description" className="text-sm font-medium">
-                              Description (Optional)
-                            </Label>
-                            <Textarea 
-                              id="description" 
-                              placeholder="E.g. Handpicked dishes for a quick and satisfying lunch." 
-                              className="w-full min-h-[80px]"
-                              value={formData.description}
-                              onChange={(e) => handleInputChange("description", e.target.value)}
-                            />
-                          </div>
+
                         </div>
                       </div>
                       
                       <div className="flex gap-3 px-6 py-4 border-t mt-auto">
                         <Button 
-                          type="button" 
+                          type="submit" 
                           variant="outline" 
                           className="flex-1"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault()
+                            
+                            // Get the form element and check validity
+                            const form = e.currentTarget.closest('form')
+                            if (form && !form.checkValidity()) {
+                              form.reportValidity()
+                              return
+                            }
+                            
                             // Simulate form submission for "Add another" functionality
                             const newItem = {
                               id: generateUniqueId(),
@@ -1947,7 +1949,7 @@ export default function Dashboard() {
                               })(),
                               lastUpdated: new Date().toISOString().split('T')[0],
                               image: "/avatars/default.jpg",
-                              description: formData.description,
+
                               reorderLevel: parseInt(formData.reorderLevel) || 0,
                               icon: formData.icon,
                               price: parseFloat(formData.price) || 0,
@@ -1963,7 +1965,6 @@ export default function Dashboard() {
                               measuringUnit: "",
                               quantity: "",
                               reorderLevel: "",
-                              description: "",
                               icon: "",
                               price: "",
                               supplier: ""
@@ -1981,7 +1982,7 @@ export default function Dashboard() {
                 </Sheet>
 
               {/* Edit Stock Item Sheet */}
-              <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+              <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetClose}>
                 <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
                   <form onSubmit={handleUpdate} className="flex flex-col h-full">
                     <div className="px-6 flex-1">
@@ -2168,11 +2169,12 @@ export default function Dashboard() {
                           <Label htmlFor="edit-stock-group" className="text-sm font-medium">
                             Stock group *
                           </Label>
-                          <StockGroupSelect
+                          <StockGroupFormSelect
                             value={formData.category || ""}
                             onChange={(value) => handleInputChange("category", value)}
                             placeholder="Search or select a stock group"
                             stockGroups={stockGroupsData}
+                            required
                           />
                         </div>
                         
@@ -2199,8 +2201,9 @@ export default function Dashboard() {
                             <MeasuringUnitSelect
                               value={formData.measuringUnit || ""}
                               onChange={(value) => handleInputChange("measuringUnit", value)}
-                              placeholder="Search or select measuring unit"
+                              placeholder="Select measuring unit"
                               measuringUnits={measuringUnitsData}
+                              required
                             />
                           </div>
                         </div>
@@ -2243,25 +2246,14 @@ export default function Dashboard() {
                           <SupplierSelect
                             value={formData.supplier || ""}
                             onChange={(value) => handleInputChange("supplier", value)}
-                            placeholder="Search or select supplier"
+                            placeholder="Select supplier"
                             suppliers={suppliers}
                             onAddSupplier={handleAddSupplierFromSelect}
                             onOpenNestedForm={handleOpenNestedSupplierForm}
                           />
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-description" className="text-sm font-medium">
-                            Description (Optional)
-                          </Label>
-                          <Textarea 
-                            id="edit-description" 
-                            placeholder="E.g. Handpicked dishes for a quick and satisfying lunch." 
-                            className="w-full min-h-[80px]"
-                            value={formData.description}
-                            onChange={(e) => handleInputChange("description", e.target.value)}
-                          />
-                        </div>
+
                       </div>
                     </div>
                     
@@ -2294,17 +2286,14 @@ export default function Dashboard() {
                       onChange={(e) => setStockItemSearch(e.target.value)}
                     />
                   </div>
-                  <Select value={stockItemCategoryFilter} onValueChange={setStockItemCategoryFilter}>
-                    <SelectTrigger className="w-48 bg-white border-gray-200">
-                      <SelectValue placeholder="Filter by category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {stockGroups.map((category) => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <StockGroupSelect
+                    value={stockItemCategoryFilter}
+                    onChange={setStockItemCategoryFilter}
+                    placeholder="Filter by stock group"
+                    className="w-48"
+                    stockGroups={stockGroupsData}
+                    showDescriptions={false}
+                  />
                   <Select value={stockItemStatusFilter} onValueChange={setStockItemStatusFilter}>
                     <SelectTrigger className="w-48 bg-white border-gray-200">
                       <SelectValue placeholder="Filter by status" />
@@ -2359,8 +2348,7 @@ export default function Dashboard() {
                       {filteredStockItems.map((item) => (
                         <TableRow 
                           key={item.id}
-                          className="cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => window.location.href = `/stock-item/${item.id}`}
+                          className="hover:bg-gray-50 transition-colors"
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
@@ -2372,7 +2360,6 @@ export default function Dashboard() {
                               </Avatar>
                               <div>
                                 <div className="font-medium">{item.name}</div>
-                                <div className="text-sm text-gray-500 font-normal">{item.description || "No description"}</div>
                               </div>
                             </div>
                           </TableCell>
@@ -2380,9 +2367,9 @@ export default function Dashboard() {
                             <Badge variant="secondary">{item.category}</Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{item.quantity} {item.measuringUnit || ""}</div>
+                            <div className="font-medium">{item.quantity} {getMeasuringUnitAbbreviation(item.measuringUnit) || ""}</div>
                             <div className="text-sm text-gray-500 font-normal">
-                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${item.measuringUnit || ""}` : "No re-order level"}
+                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${getMeasuringUnitAbbreviation(item.measuringUnit) || ""}` : "No re-order level"}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2431,24 +2418,15 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordPurchaseAction(item); }}>
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Record Purchase
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordUsageAction(item); }}>
-                                  <Minus className="mr-2 h-4 w-4" />
-                                  Record Usage
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewStockMovements(item); }}>
+                                  <Activity className="mr-2 h-4 w-4" />
+                                  View stock movements
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditStockItem(item); }}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit stock item
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/stock-item/${item.id}`}>
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    View Activity Logs
-                                  </Link>
-                                </DropdownMenuItem>
+
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-red-600"
@@ -3029,12 +3007,13 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Party</TableHead>
                         <TableHead>Date & Time</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Stock Group</TableHead>
+                        <TableHead>Quantity</TableHead>
                         <TableHead>Value</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -3044,17 +3023,28 @@ export default function Dashboard() {
                         return (
                           <TableRow key={activity.id} className="hover:bg-gray-50 transition-colors">
                             <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={stockItem?.image} />
-                                  <AvatarFallback>
-                                    {stockItem?.icon || stockItem?.name.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{stockItem?.name || 'Unknown Item'}</div>
-                                  <div className="text-sm text-gray-500">{stockItem?.category}</div>
-                                </div>
+                              <div>
+                                <div className="font-medium">{activity.date}</div>
+                                <div className="text-sm text-gray-500">{activity.time}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{activity.party || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{stockItem?.name || 'Unknown Item'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{stockItem?.category || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">
+                                {activity.quantity} {getMeasuringUnitAbbreviation(activity.measuringUnit)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">
+                                {formatNepaliCurrency(activity.stockValue)}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -3069,25 +3059,6 @@ export default function Dashboard() {
                               >
                                 {activity.type}
                               </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">
-                                {activity.quantity} {activity.measuringUnit}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-gray-600">{activity.party || 'N/A'}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{activity.date}</div>
-                                <div className="text-sm text-gray-500">{activity.time}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">
-                                {formatNepaliCurrency(activity.stockValue)}
-                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
@@ -3761,7 +3732,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Quantity</label>
-                <p className="text-gray-900">{selectedActivity.quantity} {selectedActivity.measuringUnit}</p>
+                <p className="text-gray-900">{selectedActivity.quantity} {getMeasuringUnitAbbreviation(selectedActivity.measuringUnit)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Party</label>
@@ -3933,58 +3904,7 @@ export default function Dashboard() {
       {showStockMovementsPurchaseForm && (
         <Sheet open={showStockMovementsPurchaseForm} onOpenChange={setShowStockMovementsPurchaseForm}>
           <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              if (selectedStockItemForMovement && purchaseFormData.quantity > 0 && purchaseFormData.perUnitPrice > 0) {
-                // Create transaction record
-                const newTransaction = {
-                  id: generateUniqueId(),
-                  stockItemId: selectedStockItemForMovement.id,
-                  date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  }),
-                  time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                  }),
-                  type: "Purchase" as const,
-                  quantity: purchaseFormData.quantity,
-                  measuringUnit: selectedStockItemForMovement.measuringUnit,
-                  party: purchaseFormData.supplierName || "Unknown Supplier",
-                  stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
-                  notes: purchaseFormData.notes || "-"
-                }
-                
-                // Update stock item quantity
-                const updatedItems = stockItems.map(item => 
-                  item.id === selectedStockItemForMovement.id 
-                    ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
-                    : item
-                )
-                updateStockItems(updatedItems)
-                
-                // Save transaction
-                const existingTransactions = localStorage.getItem('stockTransactions')
-                const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
-                const updatedTransactions = [newTransaction, ...transactions]
-                localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
-                setStockTransactions(updatedTransactions)
-                
-                addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${selectedStockItemForMovement.measuringUnit} for ${selectedStockItemForMovement.name}`)
-                setShowStockMovementsPurchaseForm(false)
-                setSelectedStockItemForMovement(null)
-                setPurchaseFormData({
-                  quantity: 0,
-                  perUnitPrice: 0,
-                  supplierName: "",
-                  dateTime: new Date().toISOString().slice(0, 16),
-                  notes: ""
-                })
-              }
-            }} className="flex flex-col h-full">
+            <form className="flex flex-col h-full">
               <div className="px-6 flex-1">
                 <SheetHeader className="pl-0">
                   <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Purchase</SheetTitle>
@@ -4008,8 +3928,9 @@ export default function Dashboard() {
                         const item = stockItems.find(item => item.name === value)
                         setSelectedStockItemForMovement(item || null)
                       }}
-                      placeholder="Search or select stock item"
+                      placeholder="Select stock item"
                       stockItems={stockItems}
+                      measuringUnits={measuringUnitsData}
                       required
                     />
                   </div>
@@ -4017,12 +3938,12 @@ export default function Dashboard() {
                   {/* Quantity */}
                   <div className="space-y-2">
                     <Label htmlFor="quantity" className="text-sm font-medium">
-                      Quantity ({selectedStockItemForMovement?.measuringUnit || "units"}) *
+                      Quantity ({getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}) *
                     </Label>
                     <Input
                       id="quantity"
                       type="number"
-                      placeholder={`E.g. 50 ${selectedStockItemForMovement?.measuringUnit || "units"}`}
+                      placeholder={`E.g. 50 ${getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}`}
                       value={purchaseFormData.quantity || ""}
                       onChange={(e) => setPurchaseFormData(prev => ({
                         ...prev,
@@ -4061,7 +3982,7 @@ export default function Dashboard() {
                         ...prev,
                         supplierName: value
                       }))}
-                      placeholder="Search or select supplier"
+                      placeholder="Select supplier"
                       suppliers={suppliers}
                       onAddSupplier={handleAddSupplierFromSelect}
                     />
@@ -4109,6 +4030,100 @@ export default function Dashboard() {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Purchase" as const,
+                      quantity: purchaseFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: purchaseFormData.supplierName || "Unknown Supplier",
+                      stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
+                      notes: purchaseFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    
+                    // Reset form data for next entry
+                    setPurchaseFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Add another
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Purchase" as const,
+                      quantity: purchaseFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: purchaseFormData.supplierName || "Unknown Supplier",
+                      stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
+                      notes: purchaseFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
                     setShowStockMovementsPurchaseForm(false)
                     setSelectedStockItemForMovement(null)
                     setPurchaseFormData({
@@ -4119,14 +4134,6 @@ export default function Dashboard() {
                       notes: ""
                     })
                   }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  className="text-white flex-1" 
-                  style={{ backgroundColor: '#D8550D' }}
-                  disabled={!selectedStockItemForMovement || purchaseFormData.quantity <= 0 || purchaseFormData.perUnitPrice <= 0}
                 >
                   Record Purchase
                 </Button>
@@ -4140,59 +4147,7 @@ export default function Dashboard() {
       {showStockMovementsUsageForm && (
         <Sheet open={showStockMovementsUsageForm} onOpenChange={setShowStockMovementsUsageForm}>
           <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              if (selectedStockItemForMovement && usageFormData.quantity > 0) {
-                // Create transaction record
-                const newTransaction = {
-                  id: generateUniqueId(),
-                  stockItemId: selectedStockItemForMovement.id,
-                  date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  }),
-                  time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                  }),
-                  type: "Usage" as const,
-                  quantity: usageFormData.quantity,
-                  measuringUnit: selectedStockItemForMovement.measuringUnit,
-                  party: usageFormData.supplierName || "Kitchen Operations",
-                  stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
-                  notes: usageFormData.notes || "-"
-                }
-                
-                // Update stock item quantity
-                const updatedItems = stockItems.map(item => 
-                  item.id === selectedStockItemForMovement.id 
-                    ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
-                    : item
-                )
-                updateStockItems(updatedItems)
-                
-                // Save transaction
-                const existingTransactions = localStorage.getItem('stockTransactions')
-                const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
-                const updatedTransactions = [newTransaction, ...transactions]
-                localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
-                setStockTransactions(updatedTransactions)
-                
-                addToast('success', `Recorded usage of ${usageFormData.quantity} ${selectedStockItemForMovement.measuringUnit} for ${selectedStockItemForMovement.name}`)
-                setShowStockMovementsUsageForm(false)
-                setSelectedStockItemForMovement(null)
-                setUsageFormData({
-                  quantity: 0,
-                  perUnitPrice: 0,
-                  reasonForDeduction: "",
-                  supplierName: "",
-                  dateTime: new Date().toISOString().slice(0, 16),
-                  notes: ""
-                })
-              }
-            }} className="flex flex-col h-full">
+            <form className="flex flex-col h-full">
               <div className="px-6 flex-1">
                 <SheetHeader className="pl-0">
                   <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Usage</SheetTitle>
@@ -4216,8 +4171,9 @@ export default function Dashboard() {
                         const item = stockItems.find(item => item.name === value)
                         setSelectedStockItemForMovement(item || null)
                       }}
-                      placeholder="Search or select stock item"
+                      placeholder="Select stock item"
                       stockItems={stockItems}
+                      measuringUnits={measuringUnitsData}
                       required
                     />
                   </div>
@@ -4225,12 +4181,12 @@ export default function Dashboard() {
                   {/* Quantity */}
                   <div className="space-y-2">
                     <Label htmlFor="quantity" className="text-sm font-medium">
-                      Quantity ({selectedStockItemForMovement?.measuringUnit || "units"}) *
+                      Quantity ({getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}) *
                     </Label>
                     <Input
                       id="quantity"
                       type="number"
-                      placeholder={`E.g. 25 ${selectedStockItemForMovement?.measuringUnit || "units"}`}
+                      placeholder={`E.g. 25 ${getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}`}
                       value={usageFormData.quantity || ""}
                       onChange={(e) => setUsageFormData(prev => ({
                         ...prev,
@@ -4277,7 +4233,7 @@ export default function Dashboard() {
                           ...prev,
                           supplierName: value
                         }))}
-                        placeholder="Search or select supplier"
+                        placeholder="Select supplier"
                         suppliers={suppliers}
                         onAddSupplier={handleAddSupplierFromSelect}
                         required
@@ -4344,6 +4300,101 @@ export default function Dashboard() {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Usage" as const,
+                      quantity: usageFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: usageFormData.supplierName || "Kitchen Operations",
+                      stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
+                      notes: usageFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded usage of ${usageFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    
+                    // Reset form data for next entry
+                    setUsageFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      reasonForDeduction: "",
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Add another
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Usage" as const,
+                      quantity: usageFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: usageFormData.supplierName || "Kitchen Operations",
+                      stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
+                      notes: usageFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded usage of ${usageFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
                     setShowStockMovementsUsageForm(false)
                     setSelectedStockItemForMovement(null)
                     setUsageFormData({
@@ -4355,14 +4406,6 @@ export default function Dashboard() {
                       notes: ""
                     })
                   }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  className="text-white flex-1" 
-                  style={{ backgroundColor: '#D8550D' }}
-                  disabled={!selectedStockItemForMovement || usageFormData.quantity <= 0}
                 >
                   Record Usage
                 </Button>
@@ -4449,7 +4492,7 @@ export default function Dashboard() {
                         ...prev,
                         supplierName: value
                       }))}
-                      placeholder={`Search or select ${editingStockMovement.type === "Purchase" ? "supplier" : "party"}`}
+                      placeholder={`Select ${editingStockMovement.type === "Purchase" ? "supplier" : "party"}`}
                       suppliers={suppliers}
                       onAddSupplier={handleAddSupplierFromSelect}
                     />

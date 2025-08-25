@@ -11,7 +11,6 @@ interface StockItem {
   status: string
   lastUpdated: string
   image: string
-  description: string
   reorderLevel: number
   icon: string
   price: number
@@ -26,22 +25,30 @@ interface StockItemSelectProps {
   className?: string
   stockItems: StockItem[]
   onOpenNestedForm?: () => void
+  measuringUnits?: Array<{ id: number; name: string; abbreviation: string; createdAt: string }>
 }
 
 export function StockItemSelect({ 
   value, 
   onChange, 
-  placeholder = "Search or select stock item", 
+  placeholder = "Select stock item", 
   required = false,
   className = "",
   stockItems = [],
-  onOpenNestedForm
+  onOpenNestedForm,
+  measuringUnits = []
 }: StockItemSelectProps) {
+  // Helper function to get measuring unit abbreviation
+  const getMeasuringUnitAbbreviation = (measuringUnitName: string): string => {
+    const unit = measuringUnits.find(u => u.name === measuringUnitName)
+    return unit ? unit.abbreviation : measuringUnitName
+  }
+
   // Convert stock items to SelectOption format
   const options = stockItems.map(item => ({
     id: item.id,
     label: item.name,
-    description: `${item.category} • ${item.quantity} ${item.measuringUnit}`
+    description: `${item.category} • ${item.quantity} ${getMeasuringUnitAbbreviation(item.measuringUnit)}`
   }))
 
   return (

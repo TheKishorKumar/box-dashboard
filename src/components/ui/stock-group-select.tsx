@@ -18,28 +18,38 @@ interface StockGroupSelectProps {
   className?: string
   stockGroups: StockGroup[]
   onOpenNestedForm?: () => void
+  variant?: "default" | "select-like"
+  showDescriptions?: boolean
 }
 
 export function StockGroupSelect({ 
   value, 
   onChange, 
-  placeholder = "Search or select stock group", 
+  placeholder = "Select stock group", 
   required = false,
   className = "",
   stockGroups = [],
-  onOpenNestedForm
+  onOpenNestedForm,
+  variant = "select-like",
+  showDescriptions = true
 }: StockGroupSelectProps) {
-  // Convert stock groups to SelectOption format
-  const options = stockGroups.map(group => ({
-    id: group.id,
-    label: group.name,
-    description: group.description
-  }))
+  // Convert stock groups to SelectOption format, including "All Stock Groups" option
+  const options = [
+    { id: "all", label: "All Stock Groups", description: "Show all stock groups" },
+    ...stockGroups.map(group => ({
+      id: group.id,
+      label: group.name,
+      description: group.description
+    }))
+  ]
 
   return (
     <SelectInput
-      value={value}
-      onChange={onChange}
+      value={value === "all" ? "All Stock Groups" : value}
+      onChange={(newValue) => {
+        // Convert "All Stock Groups" back to "all" for the parent component
+        onChange(newValue === "All Stock Groups" ? "all" : newValue)
+      }}
       placeholder={placeholder}
       required={required}
       className={className}
@@ -47,6 +57,8 @@ export function StockGroupSelect({
       onOpenNestedForm={onOpenNestedForm}
       nestedFormLabel="Create a new stock group"
       showNestedFormButton={!!onOpenNestedForm}
+      variant={variant}
+      showDescriptions={showDescriptions}
     />
   )
 }

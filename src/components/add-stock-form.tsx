@@ -114,7 +114,7 @@ function AddStockForm({ itemName, measuringUnit, suppliers, onAddSupplier, onClo
           <SupplierSelect
             value={formData.supplierName}
             onChange={(value) => handleInputChange("supplierName", value)}
-            placeholder="Search or select supplier"
+                            placeholder="Select supplier"
             suppliers={suppliers}
             onAddSupplier={onAddSupplier}
           />

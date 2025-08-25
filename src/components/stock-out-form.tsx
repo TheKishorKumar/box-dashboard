@@ -137,7 +137,7 @@ export function StockOutForm({ itemName, measuringUnit, currentStock, suppliers,
                 const supplierId = `supplier-${Date.now()}-${Math.floor(Math.random() * 1000)}`
                 handleInputChange("supplier", supplierId)
               }}
-              placeholder="Search or select supplier"
+                              placeholder="Select supplier"
               suppliers={suppliers}
               onAddSupplier={onAddSupplier}
               required

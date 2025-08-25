@@ -17,16 +17,20 @@ interface MeasuringUnitSelectProps {
   className?: string
   measuringUnits: MeasuringUnit[]
   onOpenNestedForm?: () => void
+  variant?: "default" | "select-like"
+  showDescriptions?: boolean
 }
 
 export function MeasuringUnitSelect({ 
   value, 
   onChange, 
-  placeholder = "Search or select measuring unit", 
+  placeholder = "Select measuring unit", 
   required = false,
   className = "",
   measuringUnits = [],
-  onOpenNestedForm
+  onOpenNestedForm,
+  variant = "select-like",
+  showDescriptions = true
 }: MeasuringUnitSelectProps) {
   // Convert measuring units to SelectOption format
   const options = measuringUnits.map(unit => ({
@@ -46,6 +50,8 @@ export function MeasuringUnitSelect({
       onOpenNestedForm={onOpenNestedForm}
       nestedFormLabel="Create a new measuring unit"
       showNestedFormButton={!!onOpenNestedForm}
+      variant={variant}
+      showDescriptions={showDescriptions}
     />
   )
 }
