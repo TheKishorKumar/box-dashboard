@@ -16,32 +16,41 @@ interface DrawerProps {
 export function Drawer({ open, onOpenChange, title, description, children, footer }: DrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-        <div className="px-6 flex-1">
-          <SheetHeader className="pl-0">
-            <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
-              {title}
-            </SheetTitle>
-            {description && (
-              <SheetDescription>
-                {description}
-              </SheetDescription>
-            )}
-          </SheetHeader>
-          
-          {/* Separator line */}
-          <div className="border-b border-gray-200 mb-6"></div>
-          
-          <div className="space-y-6 mt-6">
-            {children}
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col h-full relative">
+        <div className="flex flex-col h-full">
+          {/* Header section - fixed */}
+          <div className="px-6 flex-shrink-0">
+            <SheetHeader className="pl-0">
+              <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                {title}
+              </SheetTitle>
+              {description && (
+                <SheetDescription>
+                  {description}
+                </SheetDescription>
+              )}
+            </SheetHeader>
+            
+            {/* Separator line */}
+            <div className="border-b border-gray-200 mb-6"></div>
           </div>
-        </div>
 
-        {footer && (
-          <div className="flex gap-3 px-6 py-4 border-t mt-auto">
-            {footer}
+          {/* Content section - scrollable with bottom padding for footer */}
+          <div className="flex-1 overflow-y-auto px-6 pb-20">
+            <div className="space-y-6">
+              {children}
+            </div>
           </div>
-        )}
+
+          {/* Footer section - absolutely positioned at bottom of drawer */}
+          {footer && (
+            <div className="absolute bottom-0 left-0 right-0 border-t bg-white">
+              <div className="flex gap-3 px-6 py-4">
+                {footer}
+              </div>
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   )

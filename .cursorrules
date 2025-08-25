@@ -1,13 +1,15 @@
 # Cursor Rules for Restaurant Inventory Management System
 
 ## Project Overview
+
 This is a Next.js 15.5.0 restaurant inventory management system built with TypeScript, Tailwind CSS v4, and Radix UI components. The system follows established design patterns and component usage conventions.
 
 ## Tech Stack & Dependencies
+
 - **Framework**: Next.js 15.5.0 with App Router and Turbopack
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
-- **UI Components**: Radix UI primitives (@radix-ui/*)
+- **UI Components**: Radix UI primitives (@radix-ui/\*)
 - **Icons**: Lucide React
 - **State Management**: React useState/useEffect with localStorage persistence
 - **Build Tool**: Turbopack
@@ -15,6 +17,7 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Design System & UI Patterns
 
 ### 1. Color Scheme
+
 - **Primary Brand Color**: `#D8550D` (Orange) with hover state `#A8420A`
 - **Background**: White (`bg-white`)
 - **Text**: Gray scale (`text-gray-900`, `text-gray-600`, `text-gray-500`)
@@ -26,8 +29,9 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
   - Info: `bg-blue-100 text-blue-800`
 
 ### 2. Typography
+
 - **Font Family**: Inter (`font-inter`)
-- **Headings**: 
+- **Headings**:
   - H1: `text-2xl font-bold text-gray-900`
   - H2: `text-xl font-semibold text-gray-900`
   - H3: `text-lg font-semibold text-gray-900`
@@ -37,12 +41,14 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ### 3. Layout Patterns
 
 #### Sidebar Navigation
+
 - Collapsible sidebar with localStorage persistence
 - Width: `w-64` (expanded) / `w-16` (collapsed)
 - Fixed positioning with smooth transitions
 - Always include toggle button and user profile section
 
 #### Main Content Area
+
 - Offset by sidebar width: `ml-64` (expanded) / `ml-16` (collapsed)
 - Use `flex-1 flex flex-col` for full-height layout
 - Consistent padding: `px-6 py-4` or `p-6`
@@ -50,20 +56,23 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ### 4. Currency & Number Formatting
 
 #### Nepali Currency Format
+
 - **Currency Symbol**: रु (Nepali Rupees)
 - **Format**: `रु 1,234.56` (with commas for thousands)
 - **Usage**: All monetary values throughout the application
 - **Implementation**: Use `formatNepaliCurrency(amount)` utility function
 
 #### Indian Numbering System
+
 - **Large Numbers**: Use Lakhs and Crores instead of millions/billions
-- **Format**: 
+- **Format**:
   - 1,00,000 = 1 Lakh
   - 1,00,00,000 = 1 Crore
 - **Implementation**: Use `formatIndianNumber(num)` utility function
 - **Comma Placement**: Every 3 digits from right, except for the last 3 digits of Lakhs/Crores
 
 #### Examples
+
 - **Small Amounts**: रु 120, रु 1,250
 - **Large Amounts**: रु 1,00,000 (1 Lakh), रु 1,00,00,000 (1 Crore)
 - **Decimal Values**: रु 1,234.56
@@ -71,42 +80,57 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ### 4. Component Usage Patterns
 
 #### Forms (Slide-out Sheets)
+
 - **Use Case**: Creation and editing forms
-- **Pattern**: Right-side slide-out with consistent structure
+- **Pattern**: Right-side slide-out with consistent structure and proper overflow handling
 - **Structure**:
+
   ```tsx
   <Sheet open={isOpen} onOpenChange={setIsOpen}>
-    <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-      <form onSubmit={handleSubmit} className="flex flex-col h-full">
-        <div className="px-6 flex-1">
+    <SheetContent
+      side="right"
+      className="w-full sm:max-w-md flex flex-col h-full"
+    >
+      <div className="flex flex-col h-full">
+        {/* Header section - fixed */}
+        <div className="px-6 flex-shrink-0">
           <SheetHeader className="pl-0">
             <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
               Form Title
             </SheetTitle>
             <SheetDescription>Form description</SheetDescription>
           </SheetHeader>
-          
+
           {/* Separator line */}
           <div className="border-b border-gray-200 mb-6"></div>
-          
-          <div className="space-y-6 mt-6">
-            {/* Form fields */}
+        </div>
+
+        {/* Content section - scrollable */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="space-y-6">{/* Form fields */}</div>
+        </div>
+
+        {/* Footer section - fixed at bottom */}
+        <div className="flex-shrink-0 border-t bg-white">
+          <div className="flex gap-3 px-6 py-4">
+            <Button variant="outline" className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              className="text-white flex-1"
+              style={{ backgroundColor: "#D8550D" }}
+            >
+              Save
+            </Button>
           </div>
         </div>
-        
-        {/* Footer with actions */}
-        <div className="flex gap-3 px-6 py-4 border-t mt-auto">
-          <Button variant="outline" className="flex-1">Cancel</Button>
-          <Button className="text-white flex-1" style={{ backgroundColor: '#D8550D' }}>
-            Save
-          </Button>
-        </div>
-      </form>
+      </div>
     </SheetContent>
   </Sheet>
   ```
 
 #### Form Fields
+
 - **Structure**: Label + Input with consistent spacing
 - **Pattern**:
   ```tsx
@@ -114,9 +138,9 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
     <Label htmlFor="field-name" className="text-sm font-medium">
       Field Label *
     </Label>
-    <Input 
-      id="field-name" 
-      placeholder="Placeholder text" 
+    <Input
+      id="field-name"
+      placeholder="Placeholder text"
       className="w-full"
       value={value}
       onChange={(e) => handleChange(e.target.value)}
@@ -126,11 +150,13 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
   ```
 
 #### Dropdown Fields with Search
+
 - **Use Case**: Selectable options with search functionality
 - **Pattern**: Custom dropdown with search input and filtered results
 - **Structure**: Input field that opens dropdown on focus with searchable options
 
 #### Tables
+
 - **Use Case**: Displaying lists of data with actions
 - **Pattern**: Consistent table structure with hover states and action menus
 - **Structure**:
@@ -149,7 +175,9 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={item.image} />
-                <AvatarFallback>{item.icon || item.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>
+                  {item.icon || item.name.charAt(0)}
+                </AvatarFallback>
               </Avatar>
               <div>
                 <div className="font-medium">{item.name}</div>
@@ -183,12 +211,13 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
   ```
 
 #### Status Badges
+
 - **Pattern**: Color-coded badges with icons
 - **Structure**:
   ```tsx
-  <Badge 
+  <Badge
     className={
-      status === "Available" 
+      status === "Available"
         ? "bg-green-100 text-green-800 hover:bg-green-100"
         : status === "Low Quantity"
         ? "bg-orange-100 text-orange-800 hover:bg-orange-100"
@@ -202,6 +231,7 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
   ```
 
 #### Empty States
+
 - **Use Case**: When no data exists
 - **Pattern**: Centered layout with illustration, title, description, and action button
 - **Structure**:
@@ -218,11 +248,13 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
   ```
 
 #### Confirmation Modals
+
 - **Use Case**: Delete confirmations and destructive actions
 - **Pattern**: Centered modal with icon, title, description, and action buttons
 - **Structure**: Fixed overlay with centered white modal containing icon, title, description, and action buttons
 
 #### Toast Notifications
+
 - **Use Case**: Success, error, and warning messages
 - **Pattern**: Fixed position top-right with auto-dismiss
 - **Structure**: White cards with colored icons, message text, and close button
@@ -230,61 +262,69 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ### 5. Page Structure Patterns
 
 #### Tab-based Navigation
+
 - **Use Case**: Organizing related functionality
 - **Pattern**: Horizontal tabs with content switching
 - **Structure**: Sticky tab bar with content areas below
 
 #### Page Headers
+
 - **Pattern**: Title, description, and action button
 - **Structure**: Flex layout with title/description on left, action button on right
 
 #### Search and Filters
+
 - **Pattern**: Search input + filter dropdowns
 - **Structure**: Flex layout with search input taking full width and filter dropdowns on right
 
 ### 6. State Management Patterns
 
 #### Local Storage Integration
+
 - **Pattern**: Custom setters with localStorage persistence
 - **Structure**:
+
   ```tsx
   const updateItems = (newItems: Item[]) => {
-    setItems(newItems)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('items', JSON.stringify(newItems))
+    setItems(newItems);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("items", JSON.stringify(newItems));
     }
-  }
-  
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('items')
+    const saved = localStorage.getItem("items");
     if (saved) {
-      setItems(JSON.parse(saved))
+      setItems(JSON.parse(saved));
     }
-    setIsHydrated(true)
-  }, [])
+    setIsHydrated(true);
+  }, []);
   ```
 
 #### Form State Management
+
 - **Pattern**: Single formData object with handleInputChange function
 - **Structure**:
+
   ```tsx
   const [formData, setFormData] = useState({
     name: "",
     category: "",
     // ... other fields
-  })
-  
+  });
+
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      [field]: value,
+    }));
+  };
   ```
 
 ## Coding Standards
 
 ### 1. Component Structure
+
 - Use TypeScript interfaces for all props
 - Implement proper error handling
 - Follow single responsibility principle
@@ -292,6 +332,7 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 - Use consistent naming conventions
 
 ### 2. File Organization
+
 - **Components**: `/src/components/`
 - **UI Components**: `/src/components/ui/`
 - **Pages**: `/src/app/`
@@ -299,12 +340,14 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 - **Types**: Define interfaces in component files or separate type files
 
 ### 3. Import Order
+
 1. React and Next.js imports
 2. Third-party library imports
 3. Internal component imports
 4. Type definitions
 
 ### 4. Naming Conventions
+
 - **Components**: PascalCase (e.g., `StockItemForm`)
 - **Files**: kebab-case (e.g., `stock-item-form.tsx`)
 - **Functions**: camelCase (e.g., `handleSubmit`)
@@ -312,12 +355,14 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 - **Interfaces**: PascalCase with descriptive names (e.g., `StockItemProps`)
 
 ### 5. Error Handling
+
 - Use try-catch blocks for async operations
 - Implement proper error boundaries
 - Show user-friendly error messages
 - Log errors for debugging
 
 ### 6. Performance Optimization
+
 - Use React.memo for expensive components
 - Implement proper dependency arrays in useEffect
 - Use localStorage efficiently
@@ -326,24 +371,28 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Specific Component Guidelines
 
 ### 1. Form Components
+
 - Always include proper labels and accessibility attributes
 - Use consistent validation patterns
 - Implement proper error states
 - Include loading states for async operations
 
 ### 2. Table Components
+
 - Include hover states for better UX
 - Implement proper keyboard navigation
 - Use consistent action patterns (edit, delete, view)
 - Include proper loading and empty states
 
 ### 3. Modal Components
+
 - Implement proper focus management
 - Include escape key handling
 - Use backdrop blur for better visual hierarchy
 - Ensure proper z-index layering
 
 ### 4. Navigation Components
+
 - Maintain consistent active states
 - Include proper hover effects
 - Implement responsive behavior
@@ -352,16 +401,19 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Accessibility Requirements
 
 ### 1. Keyboard Navigation
+
 - All interactive elements must be keyboard accessible
 - Implement proper focus management in modals and dropdowns
 - Use escape key to close modals and dropdowns
 
 ### 2. Screen Reader Support
+
 - Use proper ARIA labels on form fields
 - Include descriptive alt text for images
 - Implement status announcements for dynamic content
 
 ### 3. Color and Contrast
+
 - Maintain high contrast ratios
 - Use both color and icons for status indicators
 - Implement proper hover states for better feedback
@@ -369,12 +421,14 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Testing Guidelines
 
 ### 1. Component Testing
+
 - Test all user interactions
 - Verify proper state management
 - Test error scenarios
 - Ensure accessibility compliance
 
 ### 2. Integration Testing
+
 - Test form submissions
 - Verify data persistence
 - Test navigation flows
@@ -383,17 +437,20 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Future Considerations
 
 ### 1. Performance
+
 - Implement virtual scrolling for large datasets
 - Add infinite scroll for pagination
 - Optimize bundle size with code splitting
 
 ### 2. Features
+
 - Add drag and drop functionality
 - Implement bulk actions
 - Add advanced filtering and sorting
 - Include data export functionality
 
 ### 3. Accessibility
+
 - Add focus trap implementation
 - Implement keyboard shortcuts
 - Add high contrast mode
@@ -402,18 +459,21 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Common Patterns to Follow
 
 ### 1. Data Fetching
+
 - Use useEffect for initial data loading
 - Implement proper loading states
 - Handle error scenarios gracefully
 - Cache data appropriately
 
 ### 2. User Interactions
+
 - Provide immediate feedback for actions
 - Use toast notifications for success/error messages
 - Implement confirmation for destructive actions
 - Include proper loading states
 
 ### 3. Responsive Design
+
 - Ensure mobile-friendly layouts
 - Test on various screen sizes
 - Implement proper touch interactions
@@ -422,53 +482,63 @@ This is a Next.js 15.5.0 restaurant inventory management system built with TypeS
 ## Copywriting & Content Guidelines
 
 ### 1. Terminology Consistency
+
 - **Use "stock item" consistently** - not "ingredient", "supply", or "item"
 - **Use "measuring unit"** - not "unit" or "measurement"
 - **Use "stock group"** - not "category" or "group"
 
 ### 2. Page Headers
+
 - **Titles**: Clear, concise (e.g., "Stock item", "Measuring Units", "Stock Groups")
 - **Descriptions**: Action-oriented with benefit (e.g., "Manage all ingredients and supplies your restaurant keeps in stock.")
 
 ### 3. Form Copy
+
 - **Titles**: Action + Entity (e.g., "Create stock item", "New Measuring Unit")
 - **Descriptions**: Purpose + benefit (e.g., "Add a new stock item to your inventory with initial stock quantity.")
-- **Labels**: Clear + required indicator (e.g., "Item name *", "Description (Optional)")
+- **Labels**: Clear + required indicator (e.g., "Item name \*", "Description (Optional)")
 - **Placeholders**: "E.g." + specific examples (e.g., "E.g. Tomatoes, Beer, Cheese", "E.g. रु 120" for currency)
 
 ### 4. Button Text
+
 - **Primary Actions**: Action + Entity (e.g., "New stock item", "Save Stock item")
 - **Secondary Actions**: Simple verbs (e.g., "Cancel", "Add another")
 - **Menu Actions**: Action + Entity (e.g., "Edit stock item", "Delete stock item")
 
 ### 5. Empty States
+
 - **Titles**: "No" + entity + "added yet" (e.g., "No stock items added yet")
 - **Descriptions**: Action-oriented + benefit
 - **Action Buttons**: "Add First" + Entity (e.g., "Add First Stock Item")
 
 ### 6. Success Messages
+
 - **Format**: Entity + action + "successfully" (e.g., "Stock item created successfully")
 - **Toast Messages**: Action + entity + details (e.g., "Recorded purchase of 50 kg for Tomatoes")
 
 ### 7. Confirmation Dialogs
+
 - **Titles**: "Delete" + Entity + "?" (e.g., "Delete Stock Item?")
 - **Descriptions**: Warning + consequence (e.g., "This will permanently remove 'Tomatoes' from your inventory. This action cannot be undone.")
 
 ### 8. Search & Filter
+
 - **Placeholders**: "Search" + entity type (e.g., "Search stock items")
 - **Dropdowns**: "Search or select" + entity (e.g., "Search or select a stock group")
 
 ### 9. Table Headers
+
 - **Format**: Clear, concise, capitalized (e.g., "Item", "Category", "Quantity", "Status")
 
 ### 10. Writing Principles
+
 1. **Professional but approachable** tone
 2. **Clear and concise** messaging
 3. **Action-oriented** language
 4. **Consistent terminology** throughout
 5. **Helpful examples** in placeholders
 6. **Proper capitalization** and punctuation
-7. **Required field indicators** (*)
+7. **Required field indicators** (\*)
 8. **Clear feedback** for all user actions
 
 This comprehensive guide ensures consistency across the codebase and provides clear patterns for implementing new features while maintaining the established design system and user experience standards.
