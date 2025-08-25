@@ -752,16 +752,12 @@ export default function Dashboard() {
 
   // Function to handle add stock from Stock Movements tab
   const handleAddStockFromMovements = () => {
-    // This will open a form to select which stock item to add stock to
-    // For now, we'll show a toast message
-    addToast('info', 'Please select a stock item to record purchase')
+    setShowStockMovementsPurchaseForm(true)
   }
 
   // Function to handle stock out from Stock Movements tab
   const handleStockOutFromMovements = () => {
-    // This will open a form to select which stock item to record usage for
-    // For now, we'll show a toast message
-    addToast('info', 'Please select a stock item to record usage')
+    setShowStockMovementsUsageForm(true)
   }
 
   // Function to handle record purchase form submission
@@ -1130,6 +1126,11 @@ export default function Dashboard() {
   const [showDeleteActivityConfirmation, setShowDeleteActivityConfirmation] = useState(false)
   const [deletingActivity, setDeletingActivity] = useState<StockTransaction | null>(null)
   
+  // State for stock movements forms
+  const [showStockMovementsPurchaseForm, setShowStockMovementsPurchaseForm] = useState(false)
+  const [showStockMovementsUsageForm, setShowStockMovementsUsageForm] = useState(false)
+  const [selectedStockItemForMovement, setSelectedStockItemForMovement] = useState<StockItem | null>(null)
+  
   // Default measuring units
   const defaultMeasuringUnits = [
     { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
@@ -1477,6 +1478,12 @@ export default function Dashboard() {
                 Stock item
               </TabsTrigger>
               <TabsTrigger 
+                value="stock-history" 
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+              >
+                  Stock Movements
+              </TabsTrigger>
+              <TabsTrigger 
                 value="suppliers" 
                 className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
@@ -1493,12 +1500,6 @@ export default function Dashboard() {
                 className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                 Stock group
-              </TabsTrigger>
-              <TabsTrigger 
-                value="stock-history" 
-                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
-              >
-                  Stock Movements
               </TabsTrigger>
               <TabsTrigger 
                 value="settings" 
@@ -3816,6 +3817,168 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Stock Movements Purchase Form */}
+      {showStockMovementsPurchaseForm && (
+        <Sheet open={showStockMovementsPurchaseForm} onOpenChange={setShowStockMovementsPurchaseForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (selectedStockItemForMovement) {
+                setSelectedItem(selectedStockItemForMovement)
+                setShowStockMovementsPurchaseForm(false)
+                setShowAddStockForm(true)
+                setSelectedStockItemForMovement(null)
+              }
+            }} className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Purchase</SheetTitle>
+                  <SheetDescription>
+                    Select a stock item to record a purchase transaction.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock-item-select" className="text-sm font-medium">
+                      Stock Item *
+                    </Label>
+                    <Select 
+                      value={selectedStockItemForMovement?.name || ""} 
+                      onValueChange={(value) => {
+                        const item = stockItems.find(item => item.name === value)
+                        setSelectedStockItemForMovement(item || null)
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a stock item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stockItems.map((item) => (
+                          <SelectItem key={item.id} value={item.name}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{item.icon}</span>
+                              <span>{item.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowStockMovementsPurchaseForm(false)
+                    setSelectedStockItemForMovement(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  disabled={!selectedStockItemForMovement}
+                >
+                  Continue
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Stock Movements Usage Form */}
+      {showStockMovementsUsageForm && (
+        <Sheet open={showStockMovementsUsageForm} onOpenChange={setShowStockMovementsUsageForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              if (selectedStockItemForMovement) {
+                setSelectedItem(selectedStockItemForMovement)
+                setShowStockMovementsUsageForm(false)
+                setShowStockOutForm(true)
+                setSelectedStockItemForMovement(null)
+              }
+            }} className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Usage</SheetTitle>
+                  <SheetDescription>
+                    Select a stock item to record a usage transaction.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock-item-select" className="text-sm font-medium">
+                      Stock Item *
+                    </Label>
+                    <Select 
+                      value={selectedStockItemForMovement?.name || ""} 
+                      onValueChange={(value) => {
+                        const item = stockItems.find(item => item.name === value)
+                        setSelectedStockItemForMovement(item || null)
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a stock item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stockItems.map((item) => (
+                          <SelectItem key={item.id} value={item.name}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{item.icon}</span>
+                              <span>{item.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowStockMovementsUsageForm(false)
+                    setSelectedStockItemForMovement(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  disabled={!selectedStockItemForMovement}
+                >
+                  Continue
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Toast Notifications */}
