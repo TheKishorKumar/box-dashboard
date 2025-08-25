@@ -32,7 +32,7 @@ export function SupplierSelect({
   required = false,
   className = "",
   suppliers = [],
-  onAddSupplier,
+  // onAddSupplier,
   onOpenNestedForm
 }: SupplierSelectProps) {
   // Convert suppliers to SelectOption format

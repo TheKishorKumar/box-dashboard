@@ -101,7 +101,7 @@ import { SupplierSelect } from "@/components/ui/supplier-select"
 import { MeasuringUnitSelect } from "@/components/ui/measuring-unit-select"
 import { StockGroupSelect } from "@/components/ui/stock-group-select"
 import { NestedFormSheet } from "@/components/ui/nested-form-sheet"
-import { SupplierForm } from "@/components/supplier-form"
+// import { SupplierForm } from "@/components/supplier-form"
 import Link from "next/link"
 import { formatNepaliCurrency } from "@/lib/utils"
 
