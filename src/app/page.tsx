@@ -761,6 +761,84 @@ export default function Dashboard() {
     setShowStockMovementsUsageForm(true)
   }
 
+  // Function to handle editing stock movement
+  const handleEditStockMovement = (transaction: StockTransaction) => {
+    const stockItem = stockItems.find(item => item.id === transaction.stockItemId)
+    if (!stockItem) return
+
+    setEditingStockMovement(transaction)
+    setSelectedStockItemForMovement(stockItem)
+    
+    // Convert date and time back to datetime-local format
+    const dateTime = new Date(`${transaction.date} ${transaction.time}`).toISOString().slice(0, 16)
+    
+    setEditStockMovementFormData({
+      quantity: transaction.quantity,
+      perUnitPrice: transaction.stockValue / transaction.quantity,
+      supplierName: transaction.party,
+      reasonForDeduction: transaction.type === "Usage" ? "used-for-dishes" : "",
+      dateTime: dateTime,
+      notes: transaction.notes === "-" ? "" : transaction.notes
+    })
+    
+    setShowEditStockMovementForm(true)
+  }
+
+  // Function to handle edit stock movement form submission
+  const handleEditStockMovementSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingStockMovement || !selectedStockItemForMovement) return
+
+    // Calculate the difference in quantity
+    const quantityDifference = editStockMovementFormData.quantity - editingStockMovement.quantity
+    
+    // Update stock item quantity
+    const updatedItems = stockItems.map(item => 
+      item.id === selectedStockItemForMovement.id 
+        ? { ...item, quantity: item.quantity + quantityDifference }
+        : item
+    )
+    updateStockItems(updatedItems)
+    
+    // Update transaction record
+    const updatedTransaction = {
+      ...editingStockMovement,
+      quantity: editStockMovementFormData.quantity,
+      stockValue: editStockMovementFormData.quantity * editStockMovementFormData.perUnitPrice,
+      party: editStockMovementFormData.supplierName || "Unknown",
+      notes: editStockMovementFormData.notes || "-",
+      date: new Date(editStockMovementFormData.dateTime).toLocaleDateString('en-US', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      }),
+      time: new Date(editStockMovementFormData.dateTime).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+    
+    // Update transactions
+    const updatedTransactions = stockTransactions.map(transaction =>
+      transaction.id === editingStockMovement.id ? updatedTransaction : transaction
+    )
+    updateStockTransactions(updatedTransactions)
+    
+    addToast('success', `Updated ${editingStockMovement.type.toLowerCase()} record for ${selectedStockItemForMovement.name}`)
+    setShowEditStockMovementForm(false)
+    setEditingStockMovement(null)
+    setSelectedStockItemForMovement(null)
+    setEditStockMovementFormData({
+      quantity: 0,
+      perUnitPrice: 0,
+      supplierName: "",
+      reasonForDeduction: "",
+      dateTime: new Date().toISOString().slice(0, 16),
+      notes: ""
+    })
+  }
+
   // Function to handle record purchase form submission
   const handleRecordPurchaseSubmit = (data: { quantity: number; perUnitPrice: number; supplierName: string; dateTime: string; notes: string }) => {
     if (selectedItem) {
@@ -1143,6 +1221,18 @@ export default function Dashboard() {
     perUnitPrice: 0,
     reasonForDeduction: "",
     supplierName: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
+  
+  // State for editing stock movements
+  const [showEditStockMovementForm, setShowEditStockMovementForm] = useState(false)
+  const [editingStockMovement, setEditingStockMovement] = useState<StockTransaction | null>(null)
+  const [editStockMovementFormData, setEditStockMovementFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    supplierName: "",
+    reasonForDeduction: "",
     dateTime: new Date().toISOString().slice(0, 16),
     notes: ""
   })
@@ -2990,7 +3080,7 @@ export default function Dashboard() {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <div className="font-medium">{new Date(activity.date).toLocaleDateString()}</div>
+                                <div className="font-medium">{activity.date}</div>
                                 <div className="text-sm text-gray-500">{activity.time}</div>
                               </div>
                             </TableCell>
@@ -3007,6 +3097,10 @@ export default function Dashboard() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditStockMovement(activity)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Record
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleViewActivityDetails(activity)}>
                                     <FileText className="mr-2 h-4 w-4" />
                                     View Details
@@ -4271,6 +4365,160 @@ export default function Dashboard() {
                   disabled={!selectedStockItemForMovement || usageFormData.quantity <= 0}
                 >
                   Record Usage
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Edit Stock Movement Form */}
+      {showEditStockMovementForm && editingStockMovement && selectedStockItemForMovement && (
+        <Sheet open={showEditStockMovementForm} onOpenChange={setShowEditStockMovementForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form onSubmit={handleEditStockMovementSubmit} className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                    Edit {editingStockMovement.type} Record
+                  </SheetTitle>
+                  <SheetDescription>
+                    Update the details for this {editingStockMovement.type.toLowerCase()} record.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  {/* Stock Item Display (Read-only) */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Stock Item
+                    </Label>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                      <span className="text-lg">{selectedStockItemForMovement.icon}</span>
+                      <span className="font-medium">{selectedStockItemForMovement.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-quantity" className="text-sm font-medium">
+                      Quantity ({selectedStockItemForMovement.measuringUnit}) *
+                    </Label>
+                    <Input
+                      id="edit-quantity"
+                      type="number"
+                      placeholder={`E.g. ${editingStockMovement.type === "Purchase" ? "50" : "25"} ${selectedStockItemForMovement.measuringUnit}`}
+                      value={editStockMovementFormData.quantity || ""}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Per Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) *
+                    </Label>
+                    <Input
+                      id="edit-perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={editStockMovementFormData.perUnitPrice || ""}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Supplier Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-supplierName" className="text-sm font-medium">
+                      {editingStockMovement.type === "Purchase" ? "Supplier name" : "Party name"}
+                    </Label>
+                    <SupplierSelect
+                      value={editStockMovementFormData.supplierName}
+                      onChange={(value) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        supplierName: value
+                      }))}
+                      placeholder={`Search or select ${editingStockMovement.type === "Purchase" ? "supplier" : "party"}`}
+                      suppliers={suppliers}
+                      onAddSupplier={handleAddSupplierFromSelect}
+                    />
+                  </div>
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="edit-dateTime"
+                      type="datetime-local"
+                      value={editStockMovementFormData.dateTime}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="edit-notes"
+                      placeholder="Any remarks about this record"
+                      value={editStockMovementFormData.notes}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowEditStockMovementForm(false)
+                    setEditingStockMovement(null)
+                    setSelectedStockItemForMovement(null)
+                    setEditStockMovementFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      reasonForDeduction: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  disabled={editStockMovementFormData.quantity <= 0 || editStockMovementFormData.perUnitPrice <= 0}
+                >
+                  Update Record
                 </Button>
               </div>
             </form>
