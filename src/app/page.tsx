@@ -9,10 +9,10 @@ interface StockItem {
   status: string
   lastUpdated: string
   image: string
-  description: string
   reorderLevel: number
   icon: string
   price: number
+  supplier: string
 }
 
 interface StockTransaction {
@@ -97,6 +97,13 @@ import { ActivityLogsEmptyState } from "@/components/activity-logs-empty-state"
 import { MeasuringUnitsEmptyState } from "@/components/measuring-units-empty-state"
 import { StockGroupsEmptyState } from "@/components/stock-groups-empty-state"
 import { SupplierSelect } from "@/components/ui/supplier-select"
+import { StockItemSelect } from "@/components/ui/stock-item-select"
+import { StockManagementMenu } from "@/components/stock-management-menu"
+import { MeasuringUnitSelect } from "@/components/ui/measuring-unit-select"
+import { StockGroupSelect } from "@/components/ui/stock-group-select"
+import { StockGroupFormSelect } from "@/components/ui/stock-group-form-select"
+import { NestedFormSheet } from "@/components/ui/nested-form-sheet"
+// import { SupplierForm } from "@/components/supplier-form"
 import Link from "next/link"
 import { formatNepaliCurrency } from "@/lib/utils"
 
@@ -121,19 +128,26 @@ export default function Dashboard() {
     return Date.now() + Math.floor(Math.random() * 1000)
   }
 
+  // Helper function to get measuring unit abbreviation
+  const getMeasuringUnitAbbreviation = (measuringUnitName: string): string => {
+    const unit = measuringUnitsData.find(u => u.name === measuringUnitName)
+    return unit ? unit.abbreviation : measuringUnitName
+  }
+
   // State for stock items
   const [stockItems, setStockItems] = useState<StockItem[]>([])
   const [stockTransactions, setStockTransactions] = useState<StockTransaction[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
   
+  // State for active tab
+  const [activeTab, setActiveTab] = useState("stock-item")
+  
   // Filter states for stock items
   const [stockItemSearch, setStockItemSearch] = useState("")
   const [stockItemCategoryFilter, setStockItemCategoryFilter] = useState("all")
   const [stockItemStatusFilter, setStockItemStatusFilter] = useState("all")
-  const [showCreateGroup, setShowCreateGroup] = useState(false)
-  const [newGroupName, setNewGroupName] = useState("")
-  const [stockGroupSearch, setStockGroupSearch] = useState("")
-  const [isStockGroupOpen, setIsStockGroupOpen] = useState(false)
+
+
   const [stockGroups, setStockGroups] = useState([
     "Groceries",
     "Vegetables", 
@@ -155,13 +169,13 @@ export default function Dashboard() {
     "Paper Products",
     "Alcoholic Beverages"
   ])
-  const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
-  const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
+
   
   // Supplier state management
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierSearch, setSupplierSearch] = useState("")
   const [isSupplierSheetOpen, setIsSupplierSheetOpen] = useState(false)
+  const [isNestedSupplierFormOpen, setIsNestedSupplierFormOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [supplierFormData, setSupplierFormData] = useState({
     legalName: "",
@@ -176,34 +190,7 @@ export default function Dashboard() {
   const [showResetConfirmation, setShowResetConfirmation] = useState(false)
   const [showPopulateConfirmation, setShowPopulateConfirmation] = useState(false)
   
-  const defaultMeasuringUnitsList = [
-    "kg",
-    "g", 
-    "L",
-    "ml",
-    "pcs",
-    "boxes",
-    "bottles",
-    "cans",
-    "bags",
-    "units",
-    "packs",
-    "cartons",
-    "dozens",
-    "pairs",
-    "sets",
-    "rolls",
-    "sheets",
-    "pieces",
-    "slices",
-    "cups",
-    "tablespoons",
-    "teaspoons",
-    "ounces",
-    "pounds",
-    "quarts",
-    "gallons"
-  ]
+
 
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {
@@ -223,34 +210,14 @@ export default function Dashboard() {
     }
   }
 
-  // Handle creating a new stock group
-  const handleCreateGroup = () => {
-    if (newGroupName.trim()) {
-      const newGroup: StockGroup = {
-        id: generateUniqueId(),
-        name: newGroupName.trim(),
-        description: "",
-        itemCount: 0,
-        createdAt: new Date().toISOString()
-      }
-      updateStockGroupsData([...stockGroupsData, newGroup])
-      handleInputChange("category", newGroup.name)
-      setNewGroupName("")
-      setShowCreateGroup(false)
-      addToast('success', `Stock group "${newGroup.name}" created successfully`)
-    }
-  }
 
-  // Filter stock groups based on search
-  const filteredStockGroups = stockGroups.filter(group =>
-    group.toLowerCase().includes(stockGroupSearch.toLowerCase())
-  )
+
+
 
   // Filter stock items based on search and filters
   const filteredStockItems = stockItems.filter(item => {
     // Search filter
     const matchesSearch = item.name.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
-                         item.description?.toLowerCase().includes(stockItemSearch.toLowerCase()) ||
                          item.category.toLowerCase().includes(stockItemSearch.toLowerCase())
     
     // Category filter
@@ -262,10 +229,7 @@ export default function Dashboard() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
-  // Filter default measuring units based on search (for dropdown)
-  const filteredDefaultMeasuringUnits = defaultMeasuringUnitsList.filter(unit =>
-    unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
-  )
+
 
   // Filter suppliers based on search
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -398,6 +362,43 @@ export default function Dashboard() {
     addToast('success', `Supplier "${supplierData.legalName}" created successfully`)
   }
 
+  const handleNestedSupplierSubmit = (supplierData: {
+    legalName: string
+    phoneNumber: string
+    taxNumber: string
+    email: string
+    address: string
+    contactPerson: string
+  }) => {
+    const newSupplier: Supplier = {
+      id: generateUniqueId(),
+      ...supplierData,
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
+    }
+    updateSuppliers([...suppliers, newSupplier])
+    addToast('success', `Supplier "${supplierData.legalName}" created successfully and selected in the form`)
+    
+    // Auto-select the newly created supplier in the parent form
+    handleInputChange("supplier", supplierData.legalName)
+    
+    // Reset the supplier form data
+    setSupplierFormData({
+      legalName: "",
+      phoneNumber: "",
+      taxNumber: "",
+      email: "",
+      address: "",
+      contactPerson: ""
+    })
+    
+    setIsNestedSupplierFormOpen(false)
+  }
+
+  const handleOpenNestedSupplierForm = () => {
+    setIsNestedSupplierFormOpen(true)
+  }
+
   // Settings functions
   const handleResetAllData = () => {
     // Reset all data to default state
@@ -434,10 +435,10 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh red tomatoes for cooking",
         reorderLevel: 10,
         icon: "🍅",
-        price: 120
+        price: 120,
+        supplier: "ABC Suppliers Pvt. Ltd."
       },
       {
         id: generateUniqueId(),
@@ -448,10 +449,10 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh chicken breast for cooking",
         reorderLevel: 5,
         icon: "🍗",
-        price: 450
+        price: 450,
+        supplier: "Fresh Market Supplies"
       },
       {
         id: generateUniqueId(),
@@ -462,10 +463,10 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh whole milk",
         reorderLevel: 8,
         icon: "🥛",
-        price: 180
+        price: 180,
+        supplier: "ABC Suppliers Pvt. Ltd."
       },
       {
         id: generateUniqueId(),
@@ -476,10 +477,10 @@ export default function Dashboard() {
         status: "Available",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Basmati rice for cooking",
         reorderLevel: 15,
         icon: "🍚",
-        price: 200
+        price: 200,
+        supplier: "Fresh Market Supplies"
       },
       {
         id: generateUniqueId(),
@@ -490,10 +491,10 @@ export default function Dashboard() {
         status: "Low Quantity",
         lastUpdated: new Date().toISOString(),
         image: "",
-        description: "Fresh onions for cooking",
         reorderLevel: 10,
         icon: "🧅",
-        price: 80
+        price: 80,
+        supplier: "ABC Suppliers Pvt. Ltd."
       }
     ]
 
@@ -681,26 +682,7 @@ export default function Dashboard() {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
-  // Handle clicking outside to close dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest('.stock-group-dropdown')) {
-        setIsStockGroupOpen(false)
-      }
-      if (!target.closest('.measuring-unit-dropdown')) {
-        setIsMeasuringUnitOpen(false)
-      }
-    }
 
-    if (isStockGroupOpen || isMeasuringUnitOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isStockGroupOpen, isMeasuringUnitOpen])
 
   // State for form
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -739,7 +721,37 @@ export default function Dashboard() {
 
   // Function to handle adding stock item (opens the sheet)
   const handleAddStockItem = () => {
+    // Reset form data when opening create form
+    setFormData({
+      name: "",
+      category: "",
+      measuringUnit: "",
+      quantity: "",
+      reorderLevel: "",
+      icon: "",
+      price: "",
+      supplier: ""
+    })
     setIsSheetOpen(true)
+  }
+
+  // Function to handle edit sheet close and reset form data
+  const handleEditSheetClose = (open: boolean) => {
+    if (!open) {
+      // Reset form data when closing edit form
+      setFormData({
+        name: "",
+        category: "",
+        measuringUnit: "",
+        quantity: "",
+        reorderLevel: "",
+        icon: "",
+        price: "",
+        supplier: ""
+      })
+      setEditingItem(null)
+    }
+    setIsEditSheetOpen(open)
   }
 
   // Function to handle editing stock item
@@ -751,13 +763,11 @@ export default function Dashboard() {
       measuringUnit: item.measuringUnit,
       quantity: item.quantity.toString(),
       reorderLevel: item.reorderLevel.toString(),
-      description: item.description,
       icon: item.icon,
       price: item.price ? item.price.toString() : "",
-      supplier: ""
+      supplier: item.supplier || ""
     })
-    setStockGroupSearch(item.category) // Set the search field to show current category
-    setMeasuringUnitSearch(item.measuringUnit) // Set the search field to show current measuring unit
+
     setIsEditSheetOpen(true)
   }
 
@@ -771,6 +781,100 @@ export default function Dashboard() {
   const handleRecordUsageAction = (item: StockItem) => {
     setSelectedItem(item)
     setShowStockOutForm(true)
+  }
+
+  // Function to handle view stock movements action
+  const handleViewStockMovements = (item: StockItem) => {
+    setActivityFilterItem(item.name)
+    setActiveTab("stock-history")
+  }
+
+  // Function to handle add stock from Stock Movements tab
+  const handleAddStockFromMovements = () => {
+    setShowStockMovementsPurchaseForm(true)
+  }
+
+  // Function to handle stock out from Stock Movements tab
+  const handleStockOutFromMovements = () => {
+    setShowStockMovementsUsageForm(true)
+  }
+
+  // Function to handle editing stock movement
+  const handleEditStockMovement = (transaction: StockTransaction) => {
+    const stockItem = stockItems.find(item => item.id === transaction.stockItemId)
+    if (!stockItem) return
+
+    setEditingStockMovement(transaction)
+    setSelectedStockItemForMovement(stockItem)
+    
+    // Convert date and time back to datetime-local format
+    const dateTime = new Date(`${transaction.date} ${transaction.time}`).toISOString().slice(0, 16)
+    
+    setEditStockMovementFormData({
+      quantity: transaction.quantity,
+      perUnitPrice: transaction.stockValue / transaction.quantity,
+      supplierName: transaction.party,
+      reasonForDeduction: transaction.type === "Usage" ? "used-for-dishes" : "",
+      dateTime: dateTime,
+      notes: transaction.notes === "-" ? "" : transaction.notes
+    })
+    
+    setShowEditStockMovementForm(true)
+  }
+
+  // Function to handle edit stock movement form submission
+  const handleEditStockMovementSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingStockMovement || !selectedStockItemForMovement) return
+
+    // Calculate the difference in quantity
+    const quantityDifference = editStockMovementFormData.quantity - editingStockMovement.quantity
+    
+    // Update stock item quantity
+    const updatedItems = stockItems.map(item => 
+      item.id === selectedStockItemForMovement.id 
+        ? { ...item, quantity: item.quantity + quantityDifference }
+        : item
+    )
+    updateStockItems(updatedItems)
+    
+    // Update transaction record
+    const updatedTransaction = {
+      ...editingStockMovement,
+      quantity: editStockMovementFormData.quantity,
+      stockValue: editStockMovementFormData.quantity * editStockMovementFormData.perUnitPrice,
+      party: editStockMovementFormData.supplierName || "Unknown",
+      notes: editStockMovementFormData.notes || "-",
+      date: new Date(editStockMovementFormData.dateTime).toLocaleDateString('en-US', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      }),
+      time: new Date(editStockMovementFormData.dateTime).toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+    
+    // Update transactions
+    const updatedTransactions = stockTransactions.map(transaction =>
+      transaction.id === editingStockMovement.id ? updatedTransaction : transaction
+    )
+    updateStockTransactions(updatedTransactions)
+    
+    addToast('success', `Updated ${editingStockMovement.type.toLowerCase()} record for ${selectedStockItemForMovement.name}`)
+    setShowEditStockMovementForm(false)
+    setEditingStockMovement(null)
+    setSelectedStockItemForMovement(null)
+    setEditStockMovementFormData({
+      quantity: 0,
+      perUnitPrice: 0,
+      supplierName: "",
+      reasonForDeduction: "",
+      dateTime: new Date().toISOString().slice(0, 16),
+      notes: ""
+    })
   }
 
   // Function to handle record purchase form submission
@@ -813,7 +917,7 @@ export default function Dashboard() {
       localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
       setStockTransactions(updatedTransactions)
       
-      addToast('success', `Recorded purchase of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
+      addToast('success', `Recorded purchase of ${data.quantity} ${getMeasuringUnitAbbreviation(selectedItem.measuringUnit)} for ${selectedItem.name}`)
       setShowAddStockForm(false)
       setSelectedItem(null)
     }
@@ -877,7 +981,7 @@ export default function Dashboard() {
       localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
       setStockTransactions(updatedTransactions)
       
-      addToast('success', `Recorded usage of ${data.quantity} ${selectedItem.measuringUnit} for ${selectedItem.name}`)
+      addToast('success', `Recorded usage of ${data.quantity} ${getMeasuringUnitAbbreviation(selectedItem.measuringUnit)} for ${selectedItem.name}`)
       setShowStockOutForm(false)
       setSelectedItem(null)
     }
@@ -889,7 +993,6 @@ export default function Dashboard() {
     measuringUnit: "",
     quantity: "",
     reorderLevel: "",
-    description: "",
     icon: "",
     price: "",
     supplier: ""
@@ -926,10 +1029,10 @@ export default function Dashboard() {
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
       image: "/avatars/default.jpg",
-      description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
-      price: parseFloat(formData.price) || 0
+      price: parseFloat(formData.price) || 0,
+      supplier: formData.supplier
     }
 
     updateStockItems([...stockItems, newItem])
@@ -972,7 +1075,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1003,10 +1105,10 @@ export default function Dashboard() {
         return "Available"
       })(),
       lastUpdated: new Date().toISOString().split('T')[0],
-      description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
-      price: parseFloat(formData.price) || 0
+      price: parseFloat(formData.price) || 0,
+      supplier: formData.supplier
     }
 
     updateStockItems(stockItems.map(item => item.id === editingItem.id ? updatedItem : item))
@@ -1018,7 +1120,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1036,7 +1137,6 @@ export default function Dashboard() {
       measuringUnit: "",
       quantity: "",
       reorderLevel: "",
-      description: "",
       icon: "",
       price: "",
       supplier: ""
@@ -1137,7 +1237,39 @@ export default function Dashboard() {
   const [showDeleteActivityConfirmation, setShowDeleteActivityConfirmation] = useState(false)
   const [deletingActivity, setDeletingActivity] = useState<StockTransaction | null>(null)
   
-  // Default measuring units
+  // State for stock movements forms
+  const [showStockMovementsPurchaseForm, setShowStockMovementsPurchaseForm] = useState(false)
+  const [showStockMovementsUsageForm, setShowStockMovementsUsageForm] = useState(false)
+  const [selectedStockItemForMovement, setSelectedStockItemForMovement] = useState<StockItem | null>(null)
+  const [purchaseFormData, setPurchaseFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    supplierName: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
+  const [usageFormData, setUsageFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    reasonForDeduction: "",
+    supplierName: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
+  
+  // State for editing stock movements
+  const [showEditStockMovementForm, setShowEditStockMovementForm] = useState(false)
+  const [editingStockMovement, setEditingStockMovement] = useState<StockTransaction | null>(null)
+  const [editStockMovementFormData, setEditStockMovementFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    supplierName: "",
+    reasonForDeduction: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
+  
+  // Default measuring units (top 7 most used)
   const defaultMeasuringUnits = [
     { id: 1, name: "Kilograms", abbreviation: "kg", createdAt: new Date().toISOString() },
     { id: 2, name: "Grams", abbreviation: "g", createdAt: new Date().toISOString() },
@@ -1145,48 +1277,18 @@ export default function Dashboard() {
     { id: 4, name: "Milliliters", abbreviation: "ml", createdAt: new Date().toISOString() },
     { id: 5, name: "Pieces", abbreviation: "pcs", createdAt: new Date().toISOString() },
     { id: 6, name: "Boxes", abbreviation: "boxes", createdAt: new Date().toISOString() },
-    { id: 7, name: "Bottles", abbreviation: "bottles", createdAt: new Date().toISOString() },
-    { id: 8, name: "Cans", abbreviation: "cans", createdAt: new Date().toISOString() },
-    { id: 9, name: "Bags", abbreviation: "bags", createdAt: new Date().toISOString() },
-    { id: 10, name: "Units", abbreviation: "units", createdAt: new Date().toISOString() },
-    { id: 11, name: "Packs", abbreviation: "packs", createdAt: new Date().toISOString() },
-    { id: 12, name: "Cartons", abbreviation: "cartons", createdAt: new Date().toISOString() },
-    { id: 13, name: "Dozens", abbreviation: "dozens", createdAt: new Date().toISOString() },
-    { id: 14, name: "Pairs", abbreviation: "pairs", createdAt: new Date().toISOString() },
-    { id: 15, name: "Sets", abbreviation: "sets", createdAt: new Date().toISOString() },
-    { id: 16, name: "Rolls", abbreviation: "rolls", createdAt: new Date().toISOString() },
-    { id: 17, name: "Sheets", abbreviation: "sheets", createdAt: new Date().toISOString() },
-    { id: 18, name: "Slices", abbreviation: "slices", createdAt: new Date().toISOString() },
-    { id: 19, name: "Cups", abbreviation: "cups", createdAt: new Date().toISOString() },
-    { id: 20, name: "Tablespoons", abbreviation: "tbsp", createdAt: new Date().toISOString() },
-    { id: 21, name: "Teaspoons", abbreviation: "tsp", createdAt: new Date().toISOString() },
-    { id: 22, name: "Ounces", abbreviation: "oz", createdAt: new Date().toISOString() },
-    { id: 23, name: "Pounds", abbreviation: "lbs", createdAt: new Date().toISOString() },
-    { id: 24, name: "Quarts", abbreviation: "qt", createdAt: new Date().toISOString() },
-    { id: 25, name: "Gallons", abbreviation: "gal", createdAt: new Date().toISOString() }
+    { id: 7, name: "Bottles", abbreviation: "bottles", createdAt: new Date().toISOString() }
   ]
 
-  // Default stock groups
+  // Default stock groups (top 7 most used)
   const defaultStockGroups = [
-    { id: 1, name: "Groceries", description: "Basic grocery items and staples", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 2, name: "Vegetables", description: "Fresh vegetables and produce", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 3, name: "Meat", description: "Fresh meat and poultry products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 4, name: "Dairy", description: "Dairy products and milk-based items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 1, name: "Vegetables", description: "Fresh vegetables and produce", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 2, name: "Meat", description: "Fresh meat and poultry products", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 3, name: "Dairy", description: "Dairy products and milk-based items", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 4, name: "Grains", description: "Rice, wheat, and grain products", itemCount: 0, createdAt: new Date().toISOString() },
     { id: 5, name: "Beverages", description: "Drinks and beverage products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 6, name: "Pantry", description: "Pantry staples and dry goods", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 7, name: "Oils", description: "Cooking oils and fats", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 8, name: "Fruits", description: "Fresh fruits and dried fruits", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 9, name: "Grains", description: "Rice, wheat, and grain products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 10, name: "Spices", description: "Spices, herbs, and seasonings", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 11, name: "Condiments", description: "Sauces, dressings, and condiments", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 12, name: "Frozen Foods", description: "Frozen food items", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 13, name: "Snacks", description: "Snack foods and treats", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 14, name: "Bakery", description: "Bread, pastries, and baked goods", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 15, name: "Seafood", description: "Fish and seafood products", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 16, name: "Poultry", description: "Chicken, turkey, and other poultry", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 17, name: "Cleaning Supplies", description: "Cleaning and maintenance supplies", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 18, name: "Paper Products", description: "Paper towels, napkins, and disposables", itemCount: 0, createdAt: new Date().toISOString() },
-    { id: 19, name: "Alcoholic Beverages", description: "Beer, wine, and spirits", itemCount: 0, createdAt: new Date().toISOString() }
+    { id: 6, name: "Spices", description: "Spices, herbs, and seasonings", itemCount: 0, createdAt: new Date().toISOString() },
+    { id: 7, name: "Oils", description: "Cooking oils and fats", itemCount: 0, createdAt: new Date().toISOString() }
   ]
 
   // Custom setter that saves measuring units to localStorage
@@ -1469,7 +1571,7 @@ export default function Dashboard() {
       <div className={`flex-1 flex flex-col ${mounted && isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 ease-in-out`}>
         {/* Page Content */}
         <div className="flex-1 px-6 pb-6">
-          <Tabs defaultValue="stock-item" className="w-full">
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Top Navigation Tabs */}
             <div className="border-b border-gray-200 mb-6 sticky top-0 bg-white z-20">
             <TabsList className="flex justify-start bg-white h-auto p-0 border-b-0 shadow-none">
@@ -1482,6 +1584,12 @@ export default function Dashboard() {
                 } as React.CSSProperties}
               >
                 Stock item
+              </TabsTrigger>
+              <TabsTrigger 
+                value="stock-history" 
+                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
+              >
+                  Stock Movements
               </TabsTrigger>
               <TabsTrigger 
                 value="suppliers" 
@@ -1500,12 +1608,6 @@ export default function Dashboard() {
                 className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
               >
                 Stock group
-              </TabsTrigger>
-              <TabsTrigger 
-                value="stock-history" 
-                className="tabs-trigger relative px-3 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent data-[state=active]:border-t-transparent data-[state=active]:border-l-transparent data-[state=active]:border-r-transparent bg-transparent rounded-none shadow-none !shadow-none focus:shadow-none focus-visible:shadow-none"
-              >
-                  Activity Logs
               </TabsTrigger>
               <TabsTrigger 
                 value="settings" 
@@ -1727,100 +1829,13 @@ export default function Dashboard() {
                             <Label htmlFor="stock-group" className="text-sm font-medium">
                               Stock group *
                             </Label>
-                            <div className="relative stock-group-dropdown">
-                              <Input
-                                placeholder="Search or select a stock group"
-                                value={stockGroupSearch}
-                                onChange={(e) => {
-                                  setStockGroupSearch(e.target.value)
-                                  if (!isStockGroupOpen) setIsStockGroupOpen(true)
-                                }}
-                                onFocus={() => setIsStockGroupOpen(true)}
-                                className="w-full"
-                                required
-                              />
-                              
-                              {isStockGroupOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                  {/* Groups List - Fixed height for 5 items */}
-                                  <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredStockGroups.map((group) => (
-                                      <button
-                                        key={group}
-                                        type="button"
-                                        onClick={() => {
-                                          handleInputChange("category", group)
-                                          setStockGroupSearch(group)
-                                          setIsStockGroupOpen(false)
-                                        }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                      >
-                                        {group}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  
-                                  {/* Separator */}
-                                  <div className="border-t border-gray-200"></div>
-                                  
-                                  {/* Create New Group Button */}
-                                  <div className="p-3">
-                                    {showCreateGroup ? (
-                                      <div className="space-y-2">
-                                        <Input
-                                          placeholder="Enter group name"
-                                          value={newGroupName}
-                                          onChange={(e) => setNewGroupName(e.target.value)}
-                                          className="h-8 text-sm"
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              e.preventDefault()
-                                              handleCreateGroup()
-                                            }
-                                          }}
-                                        />
-                                        <div className="flex gap-2">
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={handleCreateGroup}
-                                            className="flex-1 h-8 text-sm"
-                                            style={{ backgroundColor: '#D8550D' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                                          >
-                                            Create
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setShowCreateGroup(false)
-                                              setNewGroupName("")
-                                            }}
-                                            className="flex-1 h-8 text-sm"
-                                          >
-                                            Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCreateGroup(true)}
-                                        className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
-                                      >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Create a new stock group
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <StockGroupFormSelect
+                              value={formData.category || ""}
+                              onChange={(value) => handleInputChange("category", value)}
+                              placeholder="Select a stock group"
+                              stockGroups={stockGroupsData}
+                              required
+                            />
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4">
@@ -1843,66 +1858,13 @@ export default function Dashboard() {
                               <Label htmlFor="measuring-unit" className="text-sm font-medium">
                                 Measuring unit *
                               </Label>
-                              <div className="relative measuring-unit-dropdown">
-                                <Input
-                                  placeholder="Search or select measuring unit"
-                                  value={measuringUnitSearch}
-                                  onChange={(e) => {
-                                    setMeasuringUnitSearch(e.target.value)
-                                    if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                                  }}
-                                  onFocus={() => setIsMeasuringUnitOpen(true)}
-                                  className="w-full"
-                                  required
-                                />
-                                
-                                {isMeasuringUnitOpen && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                    {/* Units List - Fixed height for 5 items */}
-                                    <div className="max-h-[200px] overflow-y-auto">
-                                      {filteredDefaultMeasuringUnits.map((unit) => (
-                                        <button
-                                          key={unit}
-                                          type="button"
-                                          onClick={() => {
-                                            handleInputChange("measuringUnit", unit)
-                                            setMeasuringUnitSearch(unit)
-                                            setIsMeasuringUnitOpen(false)
-                                          }}
-                                          className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                        >
-                                          {unit === "kg" && "Kilograms (kg)"}
-                                          {unit === "g" && "Grams (g)"}
-                                          {unit === "L" && "Liters (L)"}
-                                          {unit === "ml" && "Milliliters (ml)"}
-                                          {unit === "pcs" && "Pieces (pcs)"}
-                                          {unit === "boxes" && "Boxes"}
-                                          {unit === "bottles" && "Bottles"}
-                                          {unit === "cans" && "Cans"}
-                                          {unit === "bags" && "Bags"}
-                                          {unit === "units" && "Units"}
-                                          {unit === "packs" && "Packs"}
-                                          {unit === "cartons" && "Cartons"}
-                                          {unit === "dozens" && "Dozens"}
-                                          {unit === "pairs" && "Pairs"}
-                                          {unit === "sets" && "Sets"}
-                                          {unit === "rolls" && "Rolls"}
-                                          {unit === "sheets" && "Sheets"}
-                                          {unit === "pieces" && "Pieces"}
-                                          {unit === "slices" && "Slices"}
-                                          {unit === "cups" && "Cups"}
-                                          {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                          {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                          {unit === "ounces" && "Ounces (oz)"}
-                                          {unit === "pounds" && "Pounds (lbs)"}
-                                          {unit === "quarts" && "Quarts (qt)"}
-                                          {unit === "gallons" && "Gallons (gal)"}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                              <MeasuringUnitSelect
+                                value={formData.measuringUnit || ""}
+                                onChange={(value) => handleInputChange("measuringUnit", value)}
+                                placeholder="Select measuring unit"
+                                measuringUnits={measuringUnitsData}
+                                required
+                              />
                             </div>
                           </div>
                           
@@ -1929,15 +1891,16 @@ export default function Dashboard() {
                             <SupplierSelect
                               value={formData.supplier || ""}
                               onChange={(value) => handleInputChange("supplier", value)}
-                              placeholder="Search or select supplier"
+                              placeholder="Select supplier"
                               suppliers={suppliers}
                               onAddSupplier={handleAddSupplierFromSelect}
+                              onOpenNestedForm={handleOpenNestedSupplierForm}
                             />
                           </div>
                           
                           <div className="space-y-2">
                             <Label htmlFor="reorder-level" className="text-sm font-medium">
-                              Reorder level
+                              Re-order level
                             </Label>
                             <Input 
                               id="reorder-level" 
@@ -1950,27 +1913,25 @@ export default function Dashboard() {
                             <p className="text-xs text-gray-500">Minimum quantity before reordering</p>
                           </div>
                           
-                          <div className="space-y-2">
-                            <Label htmlFor="description" className="text-sm font-medium">
-                              Description (Optional)
-                            </Label>
-                            <Textarea 
-                              id="description" 
-                              placeholder="E.g. Handpicked dishes for a quick and satisfying lunch." 
-                              className="w-full min-h-[80px]"
-                              value={formData.description}
-                              onChange={(e) => handleInputChange("description", e.target.value)}
-                            />
-                          </div>
+
                         </div>
                       </div>
                       
                       <div className="flex gap-3 px-6 py-4 border-t mt-auto">
                         <Button 
-                          type="button" 
+                          type="submit" 
                           variant="outline" 
                           className="flex-1"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault()
+                            
+                            // Get the form element and check validity
+                            const form = e.currentTarget.closest('form')
+                            if (form && !form.checkValidity()) {
+                              form.reportValidity()
+                              return
+                            }
+                            
                             // Simulate form submission for "Add another" functionality
                             const newItem = {
                               id: generateUniqueId(),
@@ -1988,10 +1949,11 @@ export default function Dashboard() {
                               })(),
                               lastUpdated: new Date().toISOString().split('T')[0],
                               image: "/avatars/default.jpg",
-                              description: formData.description,
+
                               reorderLevel: parseInt(formData.reorderLevel) || 0,
                               icon: formData.icon,
-                              price: parseFloat(formData.price) || 0
+                              price: parseFloat(formData.price) || 0,
+                              supplier: formData.supplier
                             }
                             updateStockItems([...stockItems, newItem])
                             addToast('success', 'Stock item added successfully')
@@ -2003,7 +1965,6 @@ export default function Dashboard() {
                               measuringUnit: "",
                               quantity: "",
                               reorderLevel: "",
-                              description: "",
                               icon: "",
                               price: "",
                               supplier: ""
@@ -2021,7 +1982,7 @@ export default function Dashboard() {
                 </Sheet>
 
               {/* Edit Stock Item Sheet */}
-              <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+              <Sheet open={isEditSheetOpen} onOpenChange={handleEditSheetClose}>
                 <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
                   <form onSubmit={handleUpdate} className="flex flex-col h-full">
                     <div className="px-6 flex-1">
@@ -2208,100 +2169,13 @@ export default function Dashboard() {
                           <Label htmlFor="edit-stock-group" className="text-sm font-medium">
                             Stock group *
                           </Label>
-                          <div className="relative stock-group-dropdown">
-                            <Input
-                              placeholder="Search or select a stock group"
-                              value={stockGroupSearch}
-                              onChange={(e) => {
-                                setStockGroupSearch(e.target.value)
-                                if (!isStockGroupOpen) setIsStockGroupOpen(true)
-                              }}
-                              onFocus={() => setIsStockGroupOpen(true)}
-                              className="w-full"
-                              required
-                            />
-                            
-                            {isStockGroupOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                {/* Groups List - Fixed height for 5 items */}
-                                <div className="max-h-[200px] overflow-y-auto">
-                                  {filteredStockGroups.map((group) => (
-                                    <button
-                                      key={group}
-                                      type="button"
-                                      onClick={() => {
-                                        handleInputChange("category", group)
-                                        setStockGroupSearch(group)
-                                        setIsStockGroupOpen(false)
-                                      }}
-                                      className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                    >
-                                      {group}
-                                    </button>
-                                  ))}
-                                </div>
-                                
-                                {/* Separator */}
-                                <div className="border-t border-gray-200"></div>
-                                
-                                {/* Create New Group Button */}
-                                <div className="p-3">
-                                  {showCreateGroup ? (
-                                    <div className="space-y-2">
-                                      <Input
-                                        placeholder="Enter group name"
-                                        value={newGroupName}
-                                        onChange={(e) => setNewGroupName(e.target.value)}
-                                        className="h-8 text-sm"
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            e.preventDefault()
-                                            handleCreateGroup()
-                                          }
-                                        }}
-                                      />
-                                      <div className="flex gap-2">
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          onClick={handleCreateGroup}
-                                          className="flex-1 h-8 text-sm"
-                                          style={{ backgroundColor: '#D8550D' }}
-                                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                                        >
-                                          Create
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => {
-                                            setShowCreateGroup(false)
-                                            setNewGroupName("")
-                                          }}
-                                          className="flex-1 h-8 text-sm"
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setShowCreateGroup(true)}
-                                      className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Create a new stock group
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <StockGroupFormSelect
+                            value={formData.category || ""}
+                            onChange={(value) => handleInputChange("category", value)}
+                            placeholder="Search or select a stock group"
+                            stockGroups={stockGroupsData}
+                            required
+                          />
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4">
@@ -2324,72 +2198,19 @@ export default function Dashboard() {
                             <Label htmlFor="edit-measuring-unit" className="text-sm font-medium">
                               Measuring unit *
                             </Label>
-                            <div className="relative measuring-unit-dropdown">
-                              <Input
-                                placeholder="Search or select measuring unit"
-                                value={measuringUnitSearch}
-                                onChange={(e) => {
-                                  setMeasuringUnitSearch(e.target.value)
-                                  if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                                }}
-                                onFocus={() => setIsMeasuringUnitOpen(true)}
-                                className="w-full"
-                                required
-                              />
-                              
-                              {isMeasuringUnitOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                  {/* Units List - Fixed height for 5 items */}
-                                  <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredDefaultMeasuringUnits.map((unit) => (
-                                      <button
-                                        key={unit}
-                                        type="button"
-                                        onClick={() => {
-                                          handleInputChange("measuringUnit", unit)
-                                          setMeasuringUnitSearch(unit)
-                                          setIsMeasuringUnitOpen(false)
-                                        }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                      >
-                                        {unit === "kg" && "Kilograms (kg)"}
-                                        {unit === "g" && "Grams (g)"}
-                                        {unit === "L" && "Liters (L)"}
-                                        {unit === "ml" && "Milliliters (ml)"}
-                                        {unit === "pcs" && "Pieces (pcs)"}
-                                        {unit === "boxes" && "Boxes"}
-                                        {unit === "bottles" && "Bottles"}
-                                        {unit === "cans" && "Cans"}
-                                        {unit === "bags" && "Bags"}
-                                        {unit === "units" && "Units"}
-                                        {unit === "packs" && "Packs"}
-                                        {unit === "cartons" && "Cartons"}
-                                        {unit === "dozens" && "Dozens"}
-                                        {unit === "pairs" && "Pairs"}
-                                        {unit === "sets" && "Sets"}
-                                        {unit === "rolls" && "Rolls"}
-                                        {unit === "sheets" && "Sheets"}
-                                        {unit === "pieces" && "Pieces"}
-                                        {unit === "slices" && "Slices"}
-                                        {unit === "cups" && "Cups"}
-                                        {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                        {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                        {unit === "ounces" && "Ounces (oz)"}
-                                        {unit === "pounds" && "Pounds (lbs)"}
-                                        {unit === "quarts" && "Quarts (qt)"}
-                                        {unit === "gallons" && "Gallons (gal)"}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <MeasuringUnitSelect
+                              value={formData.measuringUnit || ""}
+                              onChange={(value) => handleInputChange("measuringUnit", value)}
+                              placeholder="Select measuring unit"
+                              measuringUnits={measuringUnitsData}
+                              required
+                            />
                           </div>
                         </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="edit-reorder-level" className="text-sm font-medium">
-                            Reorder level
+                            Re-order level
                           </Label>
                           <Input 
                             id="edit-reorder-level" 
@@ -2425,24 +2246,14 @@ export default function Dashboard() {
                           <SupplierSelect
                             value={formData.supplier || ""}
                             onChange={(value) => handleInputChange("supplier", value)}
-                            placeholder="Search or select supplier"
+                            placeholder="Select supplier"
                             suppliers={suppliers}
                             onAddSupplier={handleAddSupplierFromSelect}
+                            onOpenNestedForm={handleOpenNestedSupplierForm}
                           />
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-description" className="text-sm font-medium">
-                            Description (Optional)
-                          </Label>
-                          <Textarea 
-                            id="edit-description" 
-                            placeholder="E.g. Handpicked dishes for a quick and satisfying lunch." 
-                            className="w-full min-h-[80px]"
-                            value={formData.description}
-                            onChange={(e) => handleInputChange("description", e.target.value)}
-                          />
-                        </div>
+
                       </div>
                     </div>
                     
@@ -2475,17 +2286,14 @@ export default function Dashboard() {
                       onChange={(e) => setStockItemSearch(e.target.value)}
                     />
                   </div>
-                  <Select value={stockItemCategoryFilter} onValueChange={setStockItemCategoryFilter}>
-                    <SelectTrigger className="w-48 bg-white border-gray-200">
-                      <SelectValue placeholder="Filter by category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {stockGroups.map((category) => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <StockGroupSelect
+                    value={stockItemCategoryFilter}
+                    onChange={setStockItemCategoryFilter}
+                    placeholder="Filter by stock group"
+                    className="w-48"
+                    stockGroups={stockGroupsData}
+                    showDescriptions={false}
+                  />
                   <Select value={stockItemStatusFilter} onValueChange={setStockItemStatusFilter}>
                     <SelectTrigger className="w-48 bg-white border-gray-200">
                       <SelectValue placeholder="Filter by status" />
@@ -2540,8 +2348,7 @@ export default function Dashboard() {
                       {filteredStockItems.map((item) => (
                         <TableRow 
                           key={item.id}
-                          className="cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => window.location.href = `/stock-item/${item.id}`}
+                          className="hover:bg-gray-50 transition-colors"
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
@@ -2553,7 +2360,6 @@ export default function Dashboard() {
                               </Avatar>
                               <div>
                                 <div className="font-medium">{item.name}</div>
-                                <div className="text-sm text-gray-500 font-normal">{item.description || "No description"}</div>
                               </div>
                             </div>
                           </TableCell>
@@ -2561,9 +2367,9 @@ export default function Dashboard() {
                             <Badge variant="secondary">{item.category}</Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{item.quantity} {item.measuringUnit || ""}</div>
+                            <div className="font-medium">{item.quantity} {getMeasuringUnitAbbreviation(item.measuringUnit) || ""}</div>
                             <div className="text-sm text-gray-500 font-normal">
-                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${item.measuringUnit || ""}` : "No reorder level"}
+                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${getMeasuringUnitAbbreviation(item.measuringUnit) || ""}` : "No re-order level"}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2583,7 +2389,22 @@ export default function Dashboard() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{item.lastUpdated}</div>
+                            <div>
+                              <div className="font-medium">
+                                {new Date(item.lastUpdated).toLocaleDateString('en-US', { 
+                                  day: 'numeric', 
+                                  month: 'long', 
+                                  year: 'numeric' 
+                                })}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(item.lastUpdated).toLocaleTimeString('en-US', { 
+                                  hour: 'numeric', 
+                                  minute: '2-digit',
+                                  hour12: true 
+                                })}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -2597,24 +2418,15 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordPurchaseAction(item); }}>
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Record Purchase
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecordUsageAction(item); }}>
-                                  <Minus className="mr-2 h-4 w-4" />
-                                  Record Usage
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewStockMovements(item); }}>
+                                  <Activity className="mr-2 h-4 w-4" />
+                                  View stock movements
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditStockItem(item); }}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit stock item
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/stock-item/${item.id}`}>
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    View Activity Logs
-                                  </Link>
-                                </DropdownMenuItem>
+
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-red-600"
@@ -3121,11 +2933,29 @@ export default function Dashboard() {
               {/* Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">Stock Movements</h1>
                   <p className="text-gray-600 mt-1">
-                    Transaction history and stock movements
+                    Record purchases and usage, view transaction history
                   </p>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      className="text-white" 
+                      style={{ backgroundColor: '#D8550D' }} 
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'} 
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                    >
+                      Manage Stock
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <StockManagementMenu
+                      onStockIn={handleAddStockFromMovements}
+                      onStockOut={handleStockOutFromMovements}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Search and Filters */}
@@ -3177,12 +3007,13 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Party</TableHead>
                         <TableHead>Date & Time</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Stock Group</TableHead>
+                        <TableHead>Quantity</TableHead>
                         <TableHead>Value</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -3192,17 +3023,28 @@ export default function Dashboard() {
                         return (
                           <TableRow key={activity.id} className="hover:bg-gray-50 transition-colors">
                             <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={stockItem?.image} />
-                                  <AvatarFallback>
-                                    {stockItem?.icon || stockItem?.name.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{stockItem?.name || 'Unknown Item'}</div>
-                                  <div className="text-sm text-gray-500">{stockItem?.category}</div>
-                                </div>
+                              <div>
+                                <div className="font-medium">{activity.date}</div>
+                                <div className="text-sm text-gray-500">{activity.time}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{activity.party || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{stockItem?.name || 'Unknown Item'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">{stockItem?.category || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">
+                                {activity.quantity} {getMeasuringUnitAbbreviation(activity.measuringUnit)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-600">
+                                {formatNepaliCurrency(activity.stockValue)}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -3218,25 +3060,6 @@ export default function Dashboard() {
                                 {activity.type}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              <div className="font-medium">
-                                {activity.quantity} {activity.measuringUnit}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-gray-600">{activity.party || 'N/A'}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{new Date(activity.date).toLocaleDateString()}</div>
-                                <div className="text-sm text-gray-500">{activity.time}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">
-                                {formatNepaliCurrency(activity.stockValue)}
-                              </div>
-                            </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -3245,6 +3068,10 @@ export default function Dashboard() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditStockMovement(activity)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Record
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleViewActivityDetails(activity)}>
                                     <FileText className="mr-2 h-4 w-4" />
                                     View Details
@@ -3357,6 +3184,126 @@ export default function Dashboard() {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Nested Supplier Creation Form - Available from any tab */}
+          <NestedFormSheet
+            open={isNestedSupplierFormOpen}
+            onOpenChange={setIsNestedSupplierFormOpen}
+            onBack={() => setIsNestedSupplierFormOpen(false)}
+            title="Create supplier"
+            description="Add a new supplier to your vendor list."
+            footer={
+              <>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsNestedSupplierFormOpen(false)}
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                  onClick={() => {
+                    if (supplierFormData.legalName.trim()) {
+                      handleNestedSupplierSubmit(supplierFormData)
+                    } else {
+                      addToast('error', 'Legal name is required')
+                    }
+                  }}
+                >
+                  Save Supplier
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="nested-legal-name" className="text-sm font-medium">
+                  Legal name *
+                </Label>
+                <Input 
+                  id="nested-legal-name" 
+                  placeholder="E.g. ABC Suppliers Pvt. Ltd." 
+                  className="w-full"
+                  value={supplierFormData.legalName}
+                  onChange={(e) => handleSupplierInputChange("legalName", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-contact-person" className="text-sm font-medium">
+                  Contact person
+                </Label>
+                <Input 
+                  id="nested-contact-person" 
+                  placeholder="E.g. John Doe" 
+                  className="w-full"
+                  value={supplierFormData.contactPerson}
+                  onChange={(e) => handleSupplierInputChange("contactPerson", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-phone-number" className="text-sm font-medium">
+                  Phone number
+                </Label>
+                <Input 
+                  id="nested-phone-number" 
+                  placeholder="E.g. +977 1-2345678" 
+                  className="w-full"
+                  value={supplierFormData.phoneNumber}
+                  onChange={(e) => handleSupplierInputChange("phoneNumber", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-email" className="text-sm font-medium">
+                  Email
+                </Label>
+                <Input 
+                  id="nested-email" 
+                  type="email"
+                  placeholder="E.g. contact@abcsuppliers.com" 
+                  className="w-full"
+                  value={supplierFormData.email}
+                  onChange={(e) => handleSupplierInputChange("email", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-tax-number" className="text-sm font-medium">
+                  Tax number
+                </Label>
+                <Input 
+                  id="nested-tax-number" 
+                  placeholder="E.g. 123456789" 
+                  className="w-full"
+                  value={supplierFormData.taxNumber}
+                  onChange={(e) => handleSupplierInputChange("taxNumber", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-address" className="text-sm font-medium">
+                  Address
+                </Label>
+                <Textarea 
+                  id="nested-address" 
+                  placeholder="E.g. 123 Main Street, Kathmandu, Nepal" 
+                  className="w-full"
+                  value={supplierFormData.address}
+                  onChange={(e) => handleSupplierInputChange("address", e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          </NestedFormSheet>
         </div>
       </div>
 
@@ -3785,7 +3732,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Quantity</label>
-                <p className="text-gray-900">{selectedActivity.quantity} {selectedActivity.measuringUnit}</p>
+                <p className="text-gray-900">{selectedActivity.quantity} {getMeasuringUnitAbbreviation(selectedActivity.measuringUnit)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Party</label>
@@ -3953,8 +3900,677 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Stock Movements Purchase Form */}
+      {showStockMovementsPurchaseForm && (
+        <Sheet open={showStockMovementsPurchaseForm} onOpenChange={setShowStockMovementsPurchaseForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Purchase</SheetTitle>
+                  <SheetDescription>
+                    Record stock purchased from supplier. This increases your available inventory.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  {/* Stock Item Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="stock-item-select" className="text-sm font-medium">
+                      Stock Item *
+                    </Label>
+                    <StockItemSelect
+                      value={selectedStockItemForMovement?.name || ""}
+                      onChange={(value) => {
+                        const item = stockItems.find(item => item.name === value)
+                        setSelectedStockItemForMovement(item || null)
+                      }}
+                      placeholder="Select stock item"
+                      stockItems={stockItems}
+                      measuringUnits={measuringUnitsData}
+                      required
+                    />
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity" className="text-sm font-medium">
+                      Quantity ({getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}) *
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder={`E.g. 50 ${getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}`}
+                      value={purchaseFormData.quantity || ""}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Per Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) *
+                    </Label>
+                    <Input
+                      id="perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={purchaseFormData.perUnitPrice || ""}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Supplier Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="supplierName" className="text-sm font-medium">
+                      Supplier name
+                    </Label>
+                    <SupplierSelect
+                      value={purchaseFormData.supplierName}
+                      onChange={(value) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        supplierName: value
+                      }))}
+                      placeholder="Select supplier"
+                      suppliers={suppliers}
+                      onAddSupplier={handleAddSupplierFromSelect}
+                    />
+                  </div>
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="dateTime"
+                      type="datetime-local"
+                      value={purchaseFormData.dateTime}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any remarks about this purchase"
+                      value={purchaseFormData.notes}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Purchase" as const,
+                      quantity: purchaseFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: purchaseFormData.supplierName || "Unknown Supplier",
+                      stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
+                      notes: purchaseFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    
+                    // Reset form data for next entry
+                    setPurchaseFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Add another
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Purchase" as const,
+                      quantity: purchaseFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: purchaseFormData.supplierName || "Unknown Supplier",
+                      stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
+                      notes: purchaseFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    setShowStockMovementsPurchaseForm(false)
+                    setSelectedStockItemForMovement(null)
+                    setPurchaseFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Record Purchase
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Stock Movements Usage Form */}
+      {showStockMovementsUsageForm && (
+        <Sheet open={showStockMovementsUsageForm} onOpenChange={setShowStockMovementsUsageForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Usage</SheetTitle>
+                  <SheetDescription>
+                    Record stock used in operations. This reduces your available inventory.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  {/* Stock Item Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="stock-item-select" className="text-sm font-medium">
+                      Stock Item *
+                    </Label>
+                    <StockItemSelect
+                      value={selectedStockItemForMovement?.name || ""}
+                      onChange={(value) => {
+                        const item = stockItems.find(item => item.name === value)
+                        setSelectedStockItemForMovement(item || null)
+                      }}
+                      placeholder="Select stock item"
+                      stockItems={stockItems}
+                      measuringUnits={measuringUnitsData}
+                      required
+                    />
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity" className="text-sm font-medium">
+                      Quantity ({getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}) *
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder={`E.g. 25 ${getMeasuringUnitAbbreviation(selectedStockItemForMovement?.measuringUnit || "") || "units"}`}
+                      value={usageFormData.quantity || ""}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      max={selectedStockItemForMovement?.quantity || 0}
+                      required
+                    />
+                  </div>
+
+                  {/* Reason for Deduction */}
+                  <div className="space-y-2">
+                    <Label htmlFor="reasonForDeduction" className="text-sm font-medium">
+                      Reason for usage
+                    </Label>
+                    <Select
+                      value={usageFormData.reasonForDeduction}
+                      onValueChange={(value) => setUsageFormData(prev => ({
+                        ...prev,
+                        reasonForDeduction: value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select reason for usage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="used-for-dishes">Used for dishes</SelectItem>
+                        <SelectItem value="returned-to-supplier">Returned to supplier</SelectItem>
+                        <SelectItem value="wasted">Wasted</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Supplier Selection - Conditional */}
+                  {usageFormData.reasonForDeduction === "returned-to-supplier" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="supplier" className="text-sm font-medium">
+                        Select supplier *
+                      </Label>
+                      <SupplierSelect
+                        value={usageFormData.supplierName || ""}
+                        onChange={(value) => setUsageFormData(prev => ({
+                          ...prev,
+                          supplierName: value
+                        }))}
+                        placeholder="Select supplier"
+                        suppliers={suppliers}
+                        onAddSupplier={handleAddSupplierFromSelect}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="dateTime"
+                      type="datetime-local"
+                      value={usageFormData.dateTime}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Per Unit Price - Optional */}
+                  <div className="space-y-2">
+                    <Label htmlFor="perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) (Optional)
+                    </Label>
+                    <Input
+                      id="perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={usageFormData.perUnitPrice || ""}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any remarks about this usage"
+                      value={usageFormData.notes}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Usage" as const,
+                      quantity: usageFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: usageFormData.supplierName || "Kitchen Operations",
+                      stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
+                      notes: usageFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded usage of ${usageFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    
+                    // Reset form data for next entry
+                    setUsageFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      reasonForDeduction: "",
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Add another
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onClick={() => {
+                    // Create transaction record
+                    const newTransaction = {
+                      id: generateUniqueId(),
+                      stockItemId: selectedStockItemForMovement!.id,
+                      date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      }),
+                      time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      }),
+                      type: "Usage" as const,
+                      quantity: usageFormData.quantity,
+                      measuringUnit: selectedStockItemForMovement!.measuringUnit,
+                      party: usageFormData.supplierName || "Kitchen Operations",
+                      stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
+                      notes: usageFormData.notes || "-"
+                    }
+                    
+                    // Update stock item quantity
+                    const updatedItems = stockItems.map(item => 
+                      item.id === selectedStockItemForMovement!.id 
+                        ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
+                        : item
+                    )
+                    updateStockItems(updatedItems)
+                    
+                    // Save transaction
+                    const existingTransactions = localStorage.getItem('stockTransactions')
+                    const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                    const updatedTransactions = [newTransaction, ...transactions]
+                    localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                    setStockTransactions(updatedTransactions)
+                    
+                    addToast('success', `Recorded usage of ${usageFormData.quantity} ${getMeasuringUnitAbbreviation(selectedStockItemForMovement!.measuringUnit)} for ${selectedStockItemForMovement!.name}`)
+                    setShowStockMovementsUsageForm(false)
+                    setSelectedStockItemForMovement(null)
+                    setUsageFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      reasonForDeduction: "",
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Record Usage
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Edit Stock Movement Form */}
+      {showEditStockMovementForm && editingStockMovement && selectedStockItemForMovement && (
+        <Sheet open={showEditStockMovementForm} onOpenChange={setShowEditStockMovementForm}>
+          <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+            <form onSubmit={handleEditStockMovementSubmit} className="flex flex-col h-full">
+              <div className="px-6 flex-1">
+                <SheetHeader className="pl-0">
+                  <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
+                    Edit {editingStockMovement.type} Record
+                  </SheetTitle>
+                  <SheetDescription>
+                    Update the details for this {editingStockMovement.type.toLowerCase()} record.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                {/* Separator line */}
+                <div className="border-b border-gray-200 mb-6"></div>
+                
+                <div className="space-y-6 mt-6">
+                  {/* Stock Item Display (Read-only) */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Stock Item
+                    </Label>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                      <span className="text-lg">{selectedStockItemForMovement.icon}</span>
+                      <span className="font-medium">{selectedStockItemForMovement.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-quantity" className="text-sm font-medium">
+                      Quantity ({selectedStockItemForMovement.measuringUnit}) *
+                    </Label>
+                    <Input
+                      id="edit-quantity"
+                      type="number"
+                      placeholder={`E.g. ${editingStockMovement.type === "Purchase" ? "50" : "25"} ${selectedStockItemForMovement.measuringUnit}`}
+                      value={editStockMovementFormData.quantity || ""}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Per Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) *
+                    </Label>
+                    <Input
+                      id="edit-perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={editStockMovementFormData.perUnitPrice || ""}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Supplier Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-supplierName" className="text-sm font-medium">
+                      {editingStockMovement.type === "Purchase" ? "Supplier name" : "Party name"}
+                    </Label>
+                    <SupplierSelect
+                      value={editStockMovementFormData.supplierName}
+                      onChange={(value) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        supplierName: value
+                      }))}
+                      placeholder={`Select ${editingStockMovement.type === "Purchase" ? "supplier" : "party"}`}
+                      suppliers={suppliers}
+                      onAddSupplier={handleAddSupplierFromSelect}
+                    />
+                  </div>
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="edit-dateTime"
+                      type="datetime-local"
+                      value={editStockMovementFormData.dateTime}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="edit-notes"
+                      placeholder="Any remarks about this record"
+                      value={editStockMovementFormData.notes}
+                      onChange={(e) => setEditStockMovementFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="flex gap-3 px-6 py-4 border-t mt-auto">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setShowEditStockMovementForm(false)
+                    setEditingStockMovement(null)
+                    setSelectedStockItemForMovement(null)
+                    setEditStockMovementFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      reasonForDeduction: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  disabled={editStockMovementFormData.quantity <= 0 || editStockMovementFormData.perUnitPrice <= 0}
+                >
+                  Update Record
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      )}
+
       {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 right-4 z-[70] space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
