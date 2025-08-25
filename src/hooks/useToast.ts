@@ -25,7 +25,7 @@ export function useToast() {
     setTimeout(() => {
       removeToast(newToast.id)
     }, 5000)
-  }, [])
+  }, [removeToast])
 
   const removeToast = useCallback((id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))

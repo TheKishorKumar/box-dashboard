@@ -1,3 +1,5 @@
+import { StockItem, Supplier } from '@/types'
+
 /**
  * Utility functions for the restaurant inventory management system
  * DESIGN PATTERN: Centralized helper functions
@@ -24,7 +26,7 @@ export function generateUniqueId(): number {
  * - Case-insensitive search
  */
 export function filterStockItems(
-  items: any[],
+  items: StockItem[],
   search: string,
   categoryFilter: string,
   statusFilter: string
@@ -52,7 +54,7 @@ export function filterStockItems(
  * - Searches across legal name, contact person, email, and phone
  * - Case-insensitive search
  */
-export function filterSuppliers(suppliers: any[], search: string) {
+export function filterSuppliers(suppliers: Supplier[], search: string) {
   return suppliers.filter(supplier =>
     supplier.legalName.toLowerCase().includes(search.toLowerCase()) ||
     supplier.contactPerson.toLowerCase().includes(search.toLowerCase()) ||
