@@ -98,6 +98,7 @@ import { ActivityLogsEmptyState } from "@/components/activity-logs-empty-state"
 import { MeasuringUnitsEmptyState } from "@/components/measuring-units-empty-state"
 import { StockGroupsEmptyState } from "@/components/stock-groups-empty-state"
 import { SupplierSelect } from "@/components/ui/supplier-select"
+import { StockItemSelect } from "@/components/ui/stock-item-select"
 import { StockManagementMenu } from "@/components/stock-management-menu"
 import { MeasuringUnitSelect } from "@/components/ui/measuring-unit-select"
 import { StockGroupSelect } from "@/components/ui/stock-group-select"
@@ -1130,6 +1131,21 @@ export default function Dashboard() {
   const [showStockMovementsPurchaseForm, setShowStockMovementsPurchaseForm] = useState(false)
   const [showStockMovementsUsageForm, setShowStockMovementsUsageForm] = useState(false)
   const [selectedStockItemForMovement, setSelectedStockItemForMovement] = useState<StockItem | null>(null)
+  const [purchaseFormData, setPurchaseFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    supplierName: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
+  const [usageFormData, setUsageFormData] = useState({
+    quantity: 0,
+    perUnitPrice: 0,
+    reasonForDeduction: "",
+    supplierName: "",
+    dateTime: new Date().toISOString().slice(0, 16),
+    notes: ""
+  })
   
   // Default measuring units
   const defaultMeasuringUnits = [
@@ -3825,18 +3841,61 @@ export default function Dashboard() {
           <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
             <form onSubmit={(e) => {
               e.preventDefault()
-              if (selectedStockItemForMovement) {
-                setSelectedItem(selectedStockItemForMovement)
+              if (selectedStockItemForMovement && purchaseFormData.quantity > 0 && purchaseFormData.perUnitPrice > 0) {
+                // Create transaction record
+                const newTransaction = {
+                  id: generateUniqueId(),
+                  stockItemId: selectedStockItemForMovement.id,
+                  date: new Date(purchaseFormData.dateTime).toLocaleDateString('en-US', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  }),
+                  time: new Date(purchaseFormData.dateTime).toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true 
+                  }),
+                  type: "Purchase" as const,
+                  quantity: purchaseFormData.quantity,
+                  measuringUnit: selectedStockItemForMovement.measuringUnit,
+                  party: purchaseFormData.supplierName || "Unknown Supplier",
+                  stockValue: purchaseFormData.quantity * purchaseFormData.perUnitPrice,
+                  notes: purchaseFormData.notes || "-"
+                }
+                
+                // Update stock item quantity
+                const updatedItems = stockItems.map(item => 
+                  item.id === selectedStockItemForMovement.id 
+                    ? { ...item, quantity: item.quantity + purchaseFormData.quantity }
+                    : item
+                )
+                updateStockItems(updatedItems)
+                
+                // Save transaction
+                const existingTransactions = localStorage.getItem('stockTransactions')
+                const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                const updatedTransactions = [newTransaction, ...transactions]
+                localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                setStockTransactions(updatedTransactions)
+                
+                addToast('success', `Recorded purchase of ${purchaseFormData.quantity} ${selectedStockItemForMovement.measuringUnit} for ${selectedStockItemForMovement.name}`)
                 setShowStockMovementsPurchaseForm(false)
-                setShowAddStockForm(true)
                 setSelectedStockItemForMovement(null)
+                setPurchaseFormData({
+                  quantity: 0,
+                  perUnitPrice: 0,
+                  supplierName: "",
+                  dateTime: new Date().toISOString().slice(0, 16),
+                  notes: ""
+                })
               }
             }} className="flex flex-col h-full">
               <div className="px-6 flex-1">
                 <SheetHeader className="pl-0">
                   <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Purchase</SheetTitle>
                   <SheetDescription>
-                    Select a stock item to record a purchase transaction.
+                    Record stock purchased from supplier. This increases your available inventory.
                   </SheetDescription>
                 </SheetHeader>
                 
@@ -3844,31 +3903,107 @@ export default function Dashboard() {
                 <div className="border-b border-gray-200 mb-6"></div>
                 
                 <div className="space-y-6 mt-6">
+                  {/* Stock Item Selection */}
                   <div className="space-y-2">
                     <Label htmlFor="stock-item-select" className="text-sm font-medium">
                       Stock Item *
                     </Label>
-                    <Select 
-                      value={selectedStockItemForMovement?.name || ""} 
-                      onValueChange={(value) => {
+                    <StockItemSelect
+                      value={selectedStockItemForMovement?.name || ""}
+                      onChange={(value) => {
                         const item = stockItems.find(item => item.name === value)
                         setSelectedStockItemForMovement(item || null)
                       }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a stock item" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stockItems.map((item) => (
-                          <SelectItem key={item.id} value={item.name}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{item.icon}</span>
-                              <span>{item.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Search or select stock item"
+                      stockItems={stockItems}
+                      required
+                    />
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity" className="text-sm font-medium">
+                      Quantity ({selectedStockItemForMovement?.measuringUnit || "units"}) *
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder={`E.g. 50 ${selectedStockItemForMovement?.measuringUnit || "units"}`}
+                      value={purchaseFormData.quantity || ""}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Per Unit Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) *
+                    </Label>
+                    <Input
+                      id="perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={purchaseFormData.perUnitPrice || ""}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                      required
+                    />
+                  </div>
+
+                  {/* Supplier Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="supplierName" className="text-sm font-medium">
+                      Supplier name
+                    </Label>
+                    <SupplierSelect
+                      value={purchaseFormData.supplierName}
+                      onChange={(value) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        supplierName: value
+                      }))}
+                      placeholder="Search or select supplier"
+                      suppliers={suppliers}
+                      onAddSupplier={handleAddSupplierFromSelect}
+                    />
+                  </div>
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="dateTime"
+                      type="datetime-local"
+                      value={purchaseFormData.dateTime}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any remarks about this purchase"
+                      value={purchaseFormData.notes}
+                      onChange={(e) => setPurchaseFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
                   </div>
                 </div>
               </div>
@@ -3882,6 +4017,13 @@ export default function Dashboard() {
                   onClick={() => {
                     setShowStockMovementsPurchaseForm(false)
                     setSelectedStockItemForMovement(null)
+                    setPurchaseFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
                   }}
                 >
                   Cancel
@@ -3890,9 +4032,9 @@ export default function Dashboard() {
                   type="submit"
                   className="text-white flex-1" 
                   style={{ backgroundColor: '#D8550D' }}
-                  disabled={!selectedStockItemForMovement}
+                  disabled={!selectedStockItemForMovement || purchaseFormData.quantity <= 0 || purchaseFormData.perUnitPrice <= 0}
                 >
-                  Continue
+                  Record Purchase
                 </Button>
               </div>
             </form>
@@ -3906,18 +4048,62 @@ export default function Dashboard() {
           <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
             <form onSubmit={(e) => {
               e.preventDefault()
-              if (selectedStockItemForMovement) {
-                setSelectedItem(selectedStockItemForMovement)
+              if (selectedStockItemForMovement && usageFormData.quantity > 0) {
+                // Create transaction record
+                const newTransaction = {
+                  id: generateUniqueId(),
+                  stockItemId: selectedStockItemForMovement.id,
+                  date: new Date(usageFormData.dateTime).toLocaleDateString('en-US', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  }),
+                  time: new Date(usageFormData.dateTime).toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true 
+                  }),
+                  type: "Usage" as const,
+                  quantity: usageFormData.quantity,
+                  measuringUnit: selectedStockItemForMovement.measuringUnit,
+                  party: usageFormData.supplierName || "Kitchen Operations",
+                  stockValue: usageFormData.quantity * (usageFormData.perUnitPrice || 0),
+                  notes: usageFormData.notes || "-"
+                }
+                
+                // Update stock item quantity
+                const updatedItems = stockItems.map(item => 
+                  item.id === selectedStockItemForMovement.id 
+                    ? { ...item, quantity: Math.max(0, item.quantity - usageFormData.quantity) }
+                    : item
+                )
+                updateStockItems(updatedItems)
+                
+                // Save transaction
+                const existingTransactions = localStorage.getItem('stockTransactions')
+                const transactions = existingTransactions ? JSON.parse(existingTransactions) : []
+                const updatedTransactions = [newTransaction, ...transactions]
+                localStorage.setItem('stockTransactions', JSON.stringify(updatedTransactions))
+                setStockTransactions(updatedTransactions)
+                
+                addToast('success', `Recorded usage of ${usageFormData.quantity} ${selectedStockItemForMovement.measuringUnit} for ${selectedStockItemForMovement.name}`)
                 setShowStockMovementsUsageForm(false)
-                setShowStockOutForm(true)
                 setSelectedStockItemForMovement(null)
+                setUsageFormData({
+                  quantity: 0,
+                  perUnitPrice: 0,
+                  reasonForDeduction: "",
+                  supplierName: "",
+                  dateTime: new Date().toISOString().slice(0, 16),
+                  notes: ""
+                })
               }
             }} className="flex flex-col h-full">
               <div className="px-6 flex-1">
                 <SheetHeader className="pl-0">
                   <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">Record Usage</SheetTitle>
                   <SheetDescription>
-                    Select a stock item to record a usage transaction.
+                    Record stock used in operations. This reduces your available inventory.
                   </SheetDescription>
                 </SheetHeader>
                 
@@ -3925,31 +4111,134 @@ export default function Dashboard() {
                 <div className="border-b border-gray-200 mb-6"></div>
                 
                 <div className="space-y-6 mt-6">
+                  {/* Stock Item Selection */}
                   <div className="space-y-2">
                     <Label htmlFor="stock-item-select" className="text-sm font-medium">
                       Stock Item *
                     </Label>
-                    <Select 
-                      value={selectedStockItemForMovement?.name || ""} 
-                      onValueChange={(value) => {
+                    <StockItemSelect
+                      value={selectedStockItemForMovement?.name || ""}
+                      onChange={(value) => {
                         const item = stockItems.find(item => item.name === value)
                         setSelectedStockItemForMovement(item || null)
                       }}
+                      placeholder="Search or select stock item"
+                      stockItems={stockItems}
+                      required
+                    />
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity" className="text-sm font-medium">
+                      Quantity ({selectedStockItemForMovement?.measuringUnit || "units"}) *
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder={`E.g. 25 ${selectedStockItemForMovement?.measuringUnit || "units"}`}
+                      value={usageFormData.quantity || ""}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0
+                      }))}
+                      max={selectedStockItemForMovement?.quantity || 0}
+                      required
+                    />
+                  </div>
+
+                  {/* Reason for Deduction */}
+                  <div className="space-y-2">
+                    <Label htmlFor="reasonForDeduction" className="text-sm font-medium">
+                      Reason for usage
+                    </Label>
+                    <Select
+                      value={usageFormData.reasonForDeduction}
+                      onValueChange={(value) => setUsageFormData(prev => ({
+                        ...prev,
+                        reasonForDeduction: value
+                      }))}
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a stock item" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select reason for usage" />
                       </SelectTrigger>
                       <SelectContent>
-                        {stockItems.map((item) => (
-                          <SelectItem key={item.id} value={item.name}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{item.icon}</span>
-                              <span>{item.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="used-for-dishes">Used for dishes</SelectItem>
+                        <SelectItem value="returned-to-supplier">Returned to supplier</SelectItem>
+                        <SelectItem value="wasted">Wasted</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Supplier Selection - Conditional */}
+                  {usageFormData.reasonForDeduction === "returned-to-supplier" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="supplier" className="text-sm font-medium">
+                        Select supplier *
+                      </Label>
+                      <SupplierSelect
+                        value={usageFormData.supplierName || ""}
+                        onChange={(value) => setUsageFormData(prev => ({
+                          ...prev,
+                          supplierName: value
+                        }))}
+                        placeholder="Search or select supplier"
+                        suppliers={suppliers}
+                        onAddSupplier={handleAddSupplierFromSelect}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Date and Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dateTime" className="text-sm font-medium">
+                      Date and time
+                    </Label>
+                    <Input
+                      id="dateTime"
+                      type="datetime-local"
+                      value={usageFormData.dateTime}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        dateTime: e.target.value
+                      }))}
+                    />
+                  </div>
+
+                  {/* Per Unit Price - Optional */}
+                  <div className="space-y-2">
+                    <Label htmlFor="perUnitPrice" className="text-sm font-medium">
+                      Per unit price (रु) (Optional)
+                    </Label>
+                    <Input
+                      id="perUnitPrice"
+                      type="number"
+                      placeholder="E.g. रु 120"
+                      value={usageFormData.perUnitPrice || ""}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        perUnitPrice: parseFloat(e.target.value) || 0
+                      }))}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-medium">
+                      Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any remarks about this usage"
+                      value={usageFormData.notes}
+                      onChange={(e) => setUsageFormData(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }))}
+                      rows={3}
+                    />
                   </div>
                 </div>
               </div>
@@ -3963,6 +4252,14 @@ export default function Dashboard() {
                   onClick={() => {
                     setShowStockMovementsUsageForm(false)
                     setSelectedStockItemForMovement(null)
+                    setUsageFormData({
+                      quantity: 0,
+                      perUnitPrice: 0,
+                      reasonForDeduction: "",
+                      supplierName: "",
+                      dateTime: new Date().toISOString().slice(0, 16),
+                      notes: ""
+                    })
                   }}
                 >
                   Cancel
@@ -3971,9 +4268,9 @@ export default function Dashboard() {
                   type="submit"
                   className="text-white flex-1" 
                   style={{ backgroundColor: '#D8550D' }}
-                  disabled={!selectedStockItemForMovement}
+                  disabled={!selectedStockItemForMovement || usageFormData.quantity <= 0}
                 >
-                  Continue
+                  Record Usage
                 </Button>
               </div>
             </form>
