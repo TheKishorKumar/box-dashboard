@@ -13,6 +13,7 @@ interface StockItem {
   reorderLevel: number
   icon: string
   price: number
+  supplier: string
 }
 
 interface StockTransaction {
@@ -97,6 +98,10 @@ import { ActivityLogsEmptyState } from "@/components/activity-logs-empty-state"
 import { MeasuringUnitsEmptyState } from "@/components/measuring-units-empty-state"
 import { StockGroupsEmptyState } from "@/components/stock-groups-empty-state"
 import { SupplierSelect } from "@/components/ui/supplier-select"
+import { MeasuringUnitSelect } from "@/components/ui/measuring-unit-select"
+import { StockGroupSelect } from "@/components/ui/stock-group-select"
+import { NestedFormSheet } from "@/components/ui/nested-form-sheet"
+import { SupplierForm } from "@/components/supplier-form"
 import Link from "next/link"
 import { formatNepaliCurrency } from "@/lib/utils"
 
@@ -130,10 +135,8 @@ export default function Dashboard() {
   const [stockItemSearch, setStockItemSearch] = useState("")
   const [stockItemCategoryFilter, setStockItemCategoryFilter] = useState("all")
   const [stockItemStatusFilter, setStockItemStatusFilter] = useState("all")
-  const [showCreateGroup, setShowCreateGroup] = useState(false)
-  const [newGroupName, setNewGroupName] = useState("")
-  const [stockGroupSearch, setStockGroupSearch] = useState("")
-  const [isStockGroupOpen, setIsStockGroupOpen] = useState(false)
+
+
   const [stockGroups, setStockGroups] = useState([
     "Groceries",
     "Vegetables", 
@@ -155,13 +158,13 @@ export default function Dashboard() {
     "Paper Products",
     "Alcoholic Beverages"
   ])
-  const [measuringUnitSearch, setMeasuringUnitSearch] = useState("")
-  const [isMeasuringUnitOpen, setIsMeasuringUnitOpen] = useState(false)
+
   
   // Supplier state management
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierSearch, setSupplierSearch] = useState("")
   const [isSupplierSheetOpen, setIsSupplierSheetOpen] = useState(false)
+  const [isNestedSupplierFormOpen, setIsNestedSupplierFormOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [supplierFormData, setSupplierFormData] = useState({
     legalName: "",
@@ -176,34 +179,7 @@ export default function Dashboard() {
   const [showResetConfirmation, setShowResetConfirmation] = useState(false)
   const [showPopulateConfirmation, setShowPopulateConfirmation] = useState(false)
   
-  const defaultMeasuringUnitsList = [
-    "kg",
-    "g", 
-    "L",
-    "ml",
-    "pcs",
-    "boxes",
-    "bottles",
-    "cans",
-    "bags",
-    "units",
-    "packs",
-    "cartons",
-    "dozens",
-    "pairs",
-    "sets",
-    "rolls",
-    "sheets",
-    "pieces",
-    "slices",
-    "cups",
-    "tablespoons",
-    "teaspoons",
-    "ounces",
-    "pounds",
-    "quarts",
-    "gallons"
-  ]
+
 
   // Custom setter that saves to localStorage
   const updateStockItems = (newItems: StockItem[]) => {
@@ -223,28 +199,9 @@ export default function Dashboard() {
     }
   }
 
-  // Handle creating a new stock group
-  const handleCreateGroup = () => {
-    if (newGroupName.trim()) {
-      const newGroup: StockGroup = {
-        id: generateUniqueId(),
-        name: newGroupName.trim(),
-        description: "",
-        itemCount: 0,
-        createdAt: new Date().toISOString()
-      }
-      updateStockGroupsData([...stockGroupsData, newGroup])
-      handleInputChange("category", newGroup.name)
-      setNewGroupName("")
-      setShowCreateGroup(false)
-      addToast('success', `Stock group "${newGroup.name}" created successfully`)
-    }
-  }
 
-  // Filter stock groups based on search
-  const filteredStockGroups = stockGroups.filter(group =>
-    group.toLowerCase().includes(stockGroupSearch.toLowerCase())
-  )
+
+
 
   // Filter stock items based on search and filters
   const filteredStockItems = stockItems.filter(item => {
@@ -262,10 +219,7 @@ export default function Dashboard() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
-  // Filter default measuring units based on search (for dropdown)
-  const filteredDefaultMeasuringUnits = defaultMeasuringUnitsList.filter(unit =>
-    unit.toLowerCase().includes(measuringUnitSearch.toLowerCase())
-  )
+
 
   // Filter suppliers based on search
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -398,6 +352,43 @@ export default function Dashboard() {
     addToast('success', `Supplier "${supplierData.legalName}" created successfully`)
   }
 
+  const handleNestedSupplierSubmit = (supplierData: {
+    legalName: string
+    phoneNumber: string
+    taxNumber: string
+    email: string
+    address: string
+    contactPerson: string
+  }) => {
+    const newSupplier: Supplier = {
+      id: generateUniqueId(),
+      ...supplierData,
+      createdAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
+    }
+    updateSuppliers([...suppliers, newSupplier])
+    addToast('success', `Supplier "${supplierData.legalName}" created successfully and selected in the form`)
+    
+    // Auto-select the newly created supplier in the parent form
+    handleInputChange("supplier", supplierData.legalName)
+    
+    // Reset the supplier form data
+    setSupplierFormData({
+      legalName: "",
+      phoneNumber: "",
+      taxNumber: "",
+      email: "",
+      address: "",
+      contactPerson: ""
+    })
+    
+    setIsNestedSupplierFormOpen(false)
+  }
+
+  const handleOpenNestedSupplierForm = () => {
+    setIsNestedSupplierFormOpen(true)
+  }
+
   // Settings functions
   const handleResetAllData = () => {
     // Reset all data to default state
@@ -437,7 +428,8 @@ export default function Dashboard() {
         description: "Fresh red tomatoes for cooking",
         reorderLevel: 10,
         icon: "🍅",
-        price: 120
+        price: 120,
+        supplier: "ABC Suppliers Pvt. Ltd."
       },
       {
         id: generateUniqueId(),
@@ -451,7 +443,8 @@ export default function Dashboard() {
         description: "Fresh chicken breast for cooking",
         reorderLevel: 5,
         icon: "🍗",
-        price: 450
+        price: 450,
+        supplier: "Fresh Market Supplies"
       },
       {
         id: generateUniqueId(),
@@ -465,7 +458,8 @@ export default function Dashboard() {
         description: "Fresh whole milk",
         reorderLevel: 8,
         icon: "🥛",
-        price: 180
+        price: 180,
+        supplier: "ABC Suppliers Pvt. Ltd."
       },
       {
         id: generateUniqueId(),
@@ -479,7 +473,8 @@ export default function Dashboard() {
         description: "Basmati rice for cooking",
         reorderLevel: 15,
         icon: "🍚",
-        price: 200
+        price: 200,
+        supplier: "Fresh Market Supplies"
       },
       {
         id: generateUniqueId(),
@@ -493,7 +488,8 @@ export default function Dashboard() {
         description: "Fresh onions for cooking",
         reorderLevel: 10,
         icon: "🧅",
-        price: 80
+        price: 80,
+        supplier: "ABC Suppliers Pvt. Ltd."
       }
     ]
 
@@ -681,26 +677,7 @@ export default function Dashboard() {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
-  // Handle clicking outside to close dropdowns
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element
-      if (!target.closest('.stock-group-dropdown')) {
-        setIsStockGroupOpen(false)
-      }
-      if (!target.closest('.measuring-unit-dropdown')) {
-        setIsMeasuringUnitOpen(false)
-      }
-    }
 
-    if (isStockGroupOpen || isMeasuringUnitOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isStockGroupOpen, isMeasuringUnitOpen])
 
   // State for form
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -754,10 +731,9 @@ export default function Dashboard() {
       description: item.description,
       icon: item.icon,
       price: item.price ? item.price.toString() : "",
-      supplier: ""
+      supplier: item.supplier || ""
     })
-    setStockGroupSearch(item.category) // Set the search field to show current category
-    setMeasuringUnitSearch(item.measuringUnit) // Set the search field to show current measuring unit
+
     setIsEditSheetOpen(true)
   }
 
@@ -929,7 +905,8 @@ export default function Dashboard() {
       description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
-      price: parseFloat(formData.price) || 0
+      price: parseFloat(formData.price) || 0,
+      supplier: formData.supplier
     }
 
     updateStockItems([...stockItems, newItem])
@@ -1006,7 +983,8 @@ export default function Dashboard() {
       description: formData.description,
       reorderLevel: parseInt(formData.reorderLevel) || 0,
       icon: formData.icon,
-      price: parseFloat(formData.price) || 0
+      price: parseFloat(formData.price) || 0,
+      supplier: formData.supplier
     }
 
     updateStockItems(stockItems.map(item => item.id === editingItem.id ? updatedItem : item))
@@ -1727,100 +1705,12 @@ export default function Dashboard() {
                             <Label htmlFor="stock-group" className="text-sm font-medium">
                               Stock group *
                             </Label>
-                            <div className="relative stock-group-dropdown">
-                              <Input
-                                placeholder="Search or select a stock group"
-                                value={stockGroupSearch}
-                                onChange={(e) => {
-                                  setStockGroupSearch(e.target.value)
-                                  if (!isStockGroupOpen) setIsStockGroupOpen(true)
-                                }}
-                                onFocus={() => setIsStockGroupOpen(true)}
-                                className="w-full"
-                                required
-                              />
-                              
-                              {isStockGroupOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                  {/* Groups List - Fixed height for 5 items */}
-                                  <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredStockGroups.map((group) => (
-                                      <button
-                                        key={group}
-                                        type="button"
-                                        onClick={() => {
-                                          handleInputChange("category", group)
-                                          setStockGroupSearch(group)
-                                          setIsStockGroupOpen(false)
-                                        }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                      >
-                                        {group}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  
-                                  {/* Separator */}
-                                  <div className="border-t border-gray-200"></div>
-                                  
-                                  {/* Create New Group Button */}
-                                  <div className="p-3">
-                                    {showCreateGroup ? (
-                                      <div className="space-y-2">
-                                        <Input
-                                          placeholder="Enter group name"
-                                          value={newGroupName}
-                                          onChange={(e) => setNewGroupName(e.target.value)}
-                                          className="h-8 text-sm"
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              e.preventDefault()
-                                              handleCreateGroup()
-                                            }
-                                          }}
-                                        />
-                                        <div className="flex gap-2">
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={handleCreateGroup}
-                                            className="flex-1 h-8 text-sm"
-                                            style={{ backgroundColor: '#D8550D' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                                          >
-                                            Create
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setShowCreateGroup(false)
-                                              setNewGroupName("")
-                                            }}
-                                            className="flex-1 h-8 text-sm"
-                                          >
-                                            Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCreateGroup(true)}
-                                        className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
-                                      >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Create a new stock group
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <StockGroupSelect
+                              value={formData.category || ""}
+                              onChange={(value) => handleInputChange("category", value)}
+                              placeholder="Search or select a stock group"
+                              stockGroups={stockGroupsData}
+                            />
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4">
@@ -1843,66 +1733,12 @@ export default function Dashboard() {
                               <Label htmlFor="measuring-unit" className="text-sm font-medium">
                                 Measuring unit *
                               </Label>
-                              <div className="relative measuring-unit-dropdown">
-                                <Input
-                                  placeholder="Search or select measuring unit"
-                                  value={measuringUnitSearch}
-                                  onChange={(e) => {
-                                    setMeasuringUnitSearch(e.target.value)
-                                    if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                                  }}
-                                  onFocus={() => setIsMeasuringUnitOpen(true)}
-                                  className="w-full"
-                                  required
-                                />
-                                
-                                {isMeasuringUnitOpen && (
-                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                    {/* Units List - Fixed height for 5 items */}
-                                    <div className="max-h-[200px] overflow-y-auto">
-                                      {filteredDefaultMeasuringUnits.map((unit) => (
-                                        <button
-                                          key={unit}
-                                          type="button"
-                                          onClick={() => {
-                                            handleInputChange("measuringUnit", unit)
-                                            setMeasuringUnitSearch(unit)
-                                            setIsMeasuringUnitOpen(false)
-                                          }}
-                                          className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                        >
-                                          {unit === "kg" && "Kilograms (kg)"}
-                                          {unit === "g" && "Grams (g)"}
-                                          {unit === "L" && "Liters (L)"}
-                                          {unit === "ml" && "Milliliters (ml)"}
-                                          {unit === "pcs" && "Pieces (pcs)"}
-                                          {unit === "boxes" && "Boxes"}
-                                          {unit === "bottles" && "Bottles"}
-                                          {unit === "cans" && "Cans"}
-                                          {unit === "bags" && "Bags"}
-                                          {unit === "units" && "Units"}
-                                          {unit === "packs" && "Packs"}
-                                          {unit === "cartons" && "Cartons"}
-                                          {unit === "dozens" && "Dozens"}
-                                          {unit === "pairs" && "Pairs"}
-                                          {unit === "sets" && "Sets"}
-                                          {unit === "rolls" && "Rolls"}
-                                          {unit === "sheets" && "Sheets"}
-                                          {unit === "pieces" && "Pieces"}
-                                          {unit === "slices" && "Slices"}
-                                          {unit === "cups" && "Cups"}
-                                          {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                          {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                          {unit === "ounces" && "Ounces (oz)"}
-                                          {unit === "pounds" && "Pounds (lbs)"}
-                                          {unit === "quarts" && "Quarts (qt)"}
-                                          {unit === "gallons" && "Gallons (gal)"}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                              <MeasuringUnitSelect
+                                value={formData.measuringUnit || ""}
+                                onChange={(value) => handleInputChange("measuringUnit", value)}
+                                placeholder="Search or select measuring unit"
+                                measuringUnits={measuringUnitsData}
+                              />
                             </div>
                           </div>
                           
@@ -1932,12 +1768,13 @@ export default function Dashboard() {
                               placeholder="Search or select supplier"
                               suppliers={suppliers}
                               onAddSupplier={handleAddSupplierFromSelect}
+                              onOpenNestedForm={handleOpenNestedSupplierForm}
                             />
                           </div>
                           
                           <div className="space-y-2">
                             <Label htmlFor="reorder-level" className="text-sm font-medium">
-                              Reorder level
+                              Re-order level
                             </Label>
                             <Input 
                               id="reorder-level" 
@@ -1991,7 +1828,8 @@ export default function Dashboard() {
                               description: formData.description,
                               reorderLevel: parseInt(formData.reorderLevel) || 0,
                               icon: formData.icon,
-                              price: parseFloat(formData.price) || 0
+                              price: parseFloat(formData.price) || 0,
+                              supplier: formData.supplier
                             }
                             updateStockItems([...stockItems, newItem])
                             addToast('success', 'Stock item added successfully')
@@ -2208,100 +2046,12 @@ export default function Dashboard() {
                           <Label htmlFor="edit-stock-group" className="text-sm font-medium">
                             Stock group *
                           </Label>
-                          <div className="relative stock-group-dropdown">
-                            <Input
-                              placeholder="Search or select a stock group"
-                              value={stockGroupSearch}
-                              onChange={(e) => {
-                                setStockGroupSearch(e.target.value)
-                                if (!isStockGroupOpen) setIsStockGroupOpen(true)
-                              }}
-                              onFocus={() => setIsStockGroupOpen(true)}
-                              className="w-full"
-                              required
-                            />
-                            
-                            {isStockGroupOpen && (
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                {/* Groups List - Fixed height for 5 items */}
-                                <div className="max-h-[200px] overflow-y-auto">
-                                  {filteredStockGroups.map((group) => (
-                                    <button
-                                      key={group}
-                                      type="button"
-                                      onClick={() => {
-                                        handleInputChange("category", group)
-                                        setStockGroupSearch(group)
-                                        setIsStockGroupOpen(false)
-                                      }}
-                                      className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                    >
-                                      {group}
-                                    </button>
-                                  ))}
-                                </div>
-                                
-                                {/* Separator */}
-                                <div className="border-t border-gray-200"></div>
-                                
-                                {/* Create New Group Button */}
-                                <div className="p-3">
-                                  {showCreateGroup ? (
-                                    <div className="space-y-2">
-                                      <Input
-                                        placeholder="Enter group name"
-                                        value={newGroupName}
-                                        onChange={(e) => setNewGroupName(e.target.value)}
-                                        className="h-8 text-sm"
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            e.preventDefault()
-                                            handleCreateGroup()
-                                          }
-                                        }}
-                                      />
-                                      <div className="flex gap-2">
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          onClick={handleCreateGroup}
-                                          className="flex-1 h-8 text-sm"
-                                          style={{ backgroundColor: '#D8550D' }}
-                                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
-                                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
-                                        >
-                                          Create
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => {
-                                            setShowCreateGroup(false)
-                                            setNewGroupName("")
-                                          }}
-                                          className="flex-1 h-8 text-sm"
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setShowCreateGroup(true)}
-                                      className="w-full h-8 text-sm justify-start border-gray-300 text-gray-700 hover:bg-gray-50"
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Create a new stock group
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          <StockGroupSelect
+                            value={formData.category || ""}
+                            onChange={(value) => handleInputChange("category", value)}
+                            placeholder="Search or select a stock group"
+                            stockGroups={stockGroupsData}
+                          />
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4">
@@ -2324,72 +2074,18 @@ export default function Dashboard() {
                             <Label htmlFor="edit-measuring-unit" className="text-sm font-medium">
                               Measuring unit *
                             </Label>
-                            <div className="relative measuring-unit-dropdown">
-                              <Input
-                                placeholder="Search or select measuring unit"
-                                value={measuringUnitSearch}
-                                onChange={(e) => {
-                                  setMeasuringUnitSearch(e.target.value)
-                                  if (!isMeasuringUnitOpen) setIsMeasuringUnitOpen(true)
-                                }}
-                                onFocus={() => setIsMeasuringUnitOpen(true)}
-                                className="w-full"
-                                required
-                              />
-                              
-                              {isMeasuringUnitOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                                  {/* Units List - Fixed height for 5 items */}
-                                  <div className="max-h-[200px] overflow-y-auto">
-                                    {filteredDefaultMeasuringUnits.map((unit) => (
-                                      <button
-                                        key={unit}
-                                        type="button"
-                                        onClick={() => {
-                                          handleInputChange("measuringUnit", unit)
-                                          setMeasuringUnitSearch(unit)
-                                          setIsMeasuringUnitOpen(false)
-                                        }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                      >
-                                        {unit === "kg" && "Kilograms (kg)"}
-                                        {unit === "g" && "Grams (g)"}
-                                        {unit === "L" && "Liters (L)"}
-                                        {unit === "ml" && "Milliliters (ml)"}
-                                        {unit === "pcs" && "Pieces (pcs)"}
-                                        {unit === "boxes" && "Boxes"}
-                                        {unit === "bottles" && "Bottles"}
-                                        {unit === "cans" && "Cans"}
-                                        {unit === "bags" && "Bags"}
-                                        {unit === "units" && "Units"}
-                                        {unit === "packs" && "Packs"}
-                                        {unit === "cartons" && "Cartons"}
-                                        {unit === "dozens" && "Dozens"}
-                                        {unit === "pairs" && "Pairs"}
-                                        {unit === "sets" && "Sets"}
-                                        {unit === "rolls" && "Rolls"}
-                                        {unit === "sheets" && "Sheets"}
-                                        {unit === "pieces" && "Pieces"}
-                                        {unit === "slices" && "Slices"}
-                                        {unit === "cups" && "Cups"}
-                                        {unit === "tablespoons" && "Tablespoons (tbsp)"}
-                                        {unit === "teaspoons" && "Teaspoons (tsp)"}
-                                        {unit === "ounces" && "Ounces (oz)"}
-                                        {unit === "pounds" && "Pounds (lbs)"}
-                                        {unit === "quarts" && "Quarts (qt)"}
-                                        {unit === "gallons" && "Gallons (gal)"}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <MeasuringUnitSelect
+                              value={formData.measuringUnit || ""}
+                              onChange={(value) => handleInputChange("measuringUnit", value)}
+                              placeholder="Search or select measuring unit"
+                              measuringUnits={measuringUnitsData}
+                            />
                           </div>
                         </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="edit-reorder-level" className="text-sm font-medium">
-                            Reorder level
+                            Re-order level
                           </Label>
                           <Input 
                             id="edit-reorder-level" 
@@ -2428,6 +2124,7 @@ export default function Dashboard() {
                             placeholder="Search or select supplier"
                             suppliers={suppliers}
                             onAddSupplier={handleAddSupplierFromSelect}
+                            onOpenNestedForm={handleOpenNestedSupplierForm}
                           />
                         </div>
                         
@@ -2563,7 +2260,7 @@ export default function Dashboard() {
                           <TableCell>
                             <div className="font-medium">{item.quantity} {item.measuringUnit || ""}</div>
                             <div className="text-sm text-gray-500 font-normal">
-                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${item.measuringUnit || ""}` : "No reorder level"}
+                              {item.reorderLevel ? `Min: ${item.reorderLevel} ${item.measuringUnit || ""}` : "No re-order level"}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2583,7 +2280,22 @@ export default function Dashboard() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{item.lastUpdated}</div>
+                            <div>
+                              <div className="font-medium">
+                                {new Date(item.lastUpdated).toLocaleDateString('en-US', { 
+                                  day: 'numeric', 
+                                  month: 'long', 
+                                  year: 'numeric' 
+                                })}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(item.lastUpdated).toLocaleTimeString('en-US', { 
+                                  hour: 'numeric', 
+                                  minute: '2-digit',
+                                  hour12: true 
+                                })}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -3357,6 +3069,126 @@ export default function Dashboard() {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Nested Supplier Creation Form - Available from any tab */}
+          <NestedFormSheet
+            open={isNestedSupplierFormOpen}
+            onOpenChange={setIsNestedSupplierFormOpen}
+            onBack={() => setIsNestedSupplierFormOpen(false)}
+            title="Create supplier"
+            description="Add a new supplier to your vendor list."
+            footer={
+              <>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsNestedSupplierFormOpen(false)}
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="button"
+                  className="text-white flex-1" 
+                  style={{ backgroundColor: '#D8550D' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#A8420A'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D8550D'}
+                  onClick={() => {
+                    if (supplierFormData.legalName.trim()) {
+                      handleNestedSupplierSubmit(supplierFormData)
+                    } else {
+                      addToast('error', 'Legal name is required')
+                    }
+                  }}
+                >
+                  Save Supplier
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="nested-legal-name" className="text-sm font-medium">
+                  Legal name *
+                </Label>
+                <Input 
+                  id="nested-legal-name" 
+                  placeholder="E.g. ABC Suppliers Pvt. Ltd." 
+                  className="w-full"
+                  value={supplierFormData.legalName}
+                  onChange={(e) => handleSupplierInputChange("legalName", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-contact-person" className="text-sm font-medium">
+                  Contact person
+                </Label>
+                <Input 
+                  id="nested-contact-person" 
+                  placeholder="E.g. John Doe" 
+                  className="w-full"
+                  value={supplierFormData.contactPerson}
+                  onChange={(e) => handleSupplierInputChange("contactPerson", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-phone-number" className="text-sm font-medium">
+                  Phone number
+                </Label>
+                <Input 
+                  id="nested-phone-number" 
+                  placeholder="E.g. +977 1-2345678" 
+                  className="w-full"
+                  value={supplierFormData.phoneNumber}
+                  onChange={(e) => handleSupplierInputChange("phoneNumber", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-email" className="text-sm font-medium">
+                  Email
+                </Label>
+                <Input 
+                  id="nested-email" 
+                  type="email"
+                  placeholder="E.g. contact@abcsuppliers.com" 
+                  className="w-full"
+                  value={supplierFormData.email}
+                  onChange={(e) => handleSupplierInputChange("email", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-tax-number" className="text-sm font-medium">
+                  Tax number
+                </Label>
+                <Input 
+                  id="nested-tax-number" 
+                  placeholder="E.g. 123456789" 
+                  className="w-full"
+                  value={supplierFormData.taxNumber}
+                  onChange={(e) => handleSupplierInputChange("taxNumber", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nested-address" className="text-sm font-medium">
+                  Address
+                </Label>
+                <Textarea 
+                  id="nested-address" 
+                  placeholder="E.g. 123 Main Street, Kathmandu, Nepal" 
+                  className="w-full"
+                  value={supplierFormData.address}
+                  onChange={(e) => handleSupplierInputChange("address", e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          </NestedFormSheet>
         </div>
       </div>
 
@@ -3954,7 +3786,7 @@ export default function Dashboard() {
       )}
 
       {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 right-4 z-[70] space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}

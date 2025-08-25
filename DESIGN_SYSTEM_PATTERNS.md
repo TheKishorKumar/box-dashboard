@@ -147,6 +147,35 @@ const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
 </Sheet>
 ```
 
+#### Nested Forms (NestedFormSheet Component)
+
+**Use Case**: Creating related entities from within another form
+**Pattern**: Slide-out form with back button for nested workflows
+
+```tsx
+<NestedFormSheet
+  open={isNestedFormOpen}
+  onOpenChange={setIsNestedFormOpen}
+  onBack={() => setIsNestedFormOpen(false)}
+  title="Create Entity"
+  description="Add a new entity to continue."
+>
+  <EntityForm
+    onSubmit={handleNestedSubmit}
+    onCancel={() => setIsNestedFormOpen(false)}
+    submitLabel="Save Entity"
+    cancelLabel="Back"
+  />
+</NestedFormSheet>
+```
+
+**Key Features**:
+
+- Back button in header for navigation
+- Proper z-index management for nested overlays
+- State preservation in parent form
+- Automatic data flow back to parent form
+
 #### Form Field Structure
 
 ```tsx
@@ -497,9 +526,11 @@ const handleInputChange = (field: string, value: string) => {
 ### 2. Form Components
 
 - `Sheet` - Slide-out form container
+- `NestedFormSheet` - Nested form container with back button
 - `FormField` - Individual form field wrapper
 - `DropdownField` - Searchable dropdown
 - `FormFooter` - Form action buttons
+- `SupplierForm` - Reusable supplier creation form
 
 ### 3. Data Components
 
@@ -708,7 +739,7 @@ const handleInputChange = (field: string, value: string) => {
   - "Measuring unit \*"
   - "Price per unit \*"
   - "Supplier"
-  - "Reorder level"
+  - "Re-order level"
   - "Description (Optional)"
   - "Unit Name \*"
   - "Short Name \*"
