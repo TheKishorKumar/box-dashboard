@@ -171,47 +171,55 @@ export function SelectInput({
             : "bg-white border border-gray-300 rounded-md shadow-lg"
         }`}>
           {/* Options List - Fixed height for 5 items */}
-          <div className="max-h-[200px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400 [&::-webkit-scrollbar-button]:hidden">
-            {filteredOptions.map((option, index) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => {
-                  onChange(option.label)
-                  setSearchText("")
-                  closeDropdown()
-                }}
-                className={`w-full text-left focus:outline-none flex items-center justify-between ${
-                  variant === "select-like"
-                    ? `px-2 py-1.5 text-sm focus:bg-accent focus:text-accent-foreground rounded-sm ${
-                        index === focusedIndex ? 'bg-accent text-accent-foreground' : ''
-                      }`
-                    : `px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 ${
-                        index === focusedIndex ? 'bg-gray-100' : ''
-                      }`
-                }`}
-              >
-                                 <div className="flex-1">
-                   <div className={variant === "select-like" ? "" : "font-medium"}>{option.label}</div>
-                   {showDescriptions && option.description && (
-                     <div className={`text-sm ${
-                       variant === "select-like" ? "text-muted-foreground" : "text-gray-500"
-                     }`}>
-                       {option.description}
-                     </div>
-                   )}
-                 </div>
-                {value === option.label && (
-                  <div className={`${
-                    variant === "select-like" ? "text-accent-foreground" : "text-[#D8550D]"
-                  }`}>
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+          <div className="max-h-[200px] overflow-y-auto p-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-gray-400 [&::-webkit-scrollbar-button]:hidden">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.label)
+                    setSearchText("")
+                    closeDropdown()
+                  }}
+                  className={`w-full text-left focus:outline-none flex items-center justify-between ${
+                    variant === "select-like"
+                      ? `px-2 py-1.5 text-sm focus:bg-accent focus:text-accent-foreground rounded-sm ${
+                          index === focusedIndex ? 'bg-accent text-accent-foreground' : ''
+                        }`
+                      : `px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 ${
+                          index === focusedIndex ? 'bg-gray-100' : ''
+                        }`
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className={variant === "select-like" ? "" : "font-medium"}>{option.label}</div>
+                    {showDescriptions && option.description && (
+                      <div className={`text-sm ${
+                        variant === "select-like" ? "text-muted-foreground" : "text-gray-500"
+                      }`}>
+                        {option.description}
+                      </div>
+                    )}
                   </div>
-                )}
-              </button>
-            ))}
+                  {value === option.label && (
+                    <div className={`${
+                      variant === "select-like" ? "text-accent-foreground" : "text-[#D8550D]"
+                    }`}>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              ))
+            ) : searchText && (
+              <div className={`px-2 py-2 text-sm ${
+                variant === "select-like" ? "text-muted-foreground" : "text-gray-500"
+              }`}>
+                No results found
+              </div>
+            )}
           </div>
           
           {/* Create New Option Button */}

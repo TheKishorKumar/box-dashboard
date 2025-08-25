@@ -110,13 +110,17 @@ const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
 #### Slide-out Forms (Sheet Component)
 
 **Use Case**: Creation and editing forms
-**Pattern**: Right-side slide-out with consistent structure
+**Pattern**: Right-side slide-out with consistent structure and proper overflow handling
 
 ```tsx
 <Sheet open={isOpen} onOpenChange={setIsOpen}>
-  <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <div className="px-6 flex-1">
+  <SheetContent
+    side="right"
+    className="w-full sm:max-w-md flex flex-col h-full"
+  >
+    <div className="flex flex-col h-full">
+      {/* Header section - fixed */}
+      <div className="px-6 flex-shrink-0">
         <SheetHeader className="pl-0">
           <SheetTitle className="text-[#171717] font-inter text-[20px] font-semibold leading-[30px]">
             Form Title
@@ -126,23 +130,28 @@ const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
 
         {/* Separator line */}
         <div className="border-b border-gray-200 mb-6"></div>
-
-        <div className="space-y-6 mt-6">{/* Form fields */}</div>
       </div>
 
-      {/* Footer with actions */}
-      <div className="flex gap-3 px-6 py-4 border-t mt-auto">
-        <Button variant="outline" className="flex-1">
-          Cancel
-        </Button>
-        <Button
-          className="text-white flex-1"
-          style={{ backgroundColor: "#D8550D" }}
-        >
-          Save
-        </Button>
+      {/* Content section - scrollable */}
+      <div className="flex-1 overflow-y-auto px-6">
+        <div className="space-y-6">{/* Form fields */}</div>
       </div>
-    </form>
+
+      {/* Footer section - fixed at bottom */}
+      <div className="flex-shrink-0 border-t bg-white">
+        <div className="flex gap-3 px-6 py-4">
+          <Button variant="outline" className="flex-1">
+            Cancel
+          </Button>
+          <Button
+            className="text-white flex-1"
+            style={{ backgroundColor: "#D8550D" }}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+    </div>
   </SheetContent>
 </Sheet>
 ```
